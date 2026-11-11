@@ -22,3 +22,4 @@ key.properties
 build/
 .dart_tool/
 local.properties
+.kotlin/
