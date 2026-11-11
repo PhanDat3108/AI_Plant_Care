@@ -17,4 +17,4 @@ Các quan hệ cá nhân xóa cascade theo cha. Migration bật RLS trên tám b
 
 Trên Supabase lấy connection strings từ **Connect**. Đặt `DATABASE_URL` cho Prisma runtime, `DIRECT_URL` cho migration (direct connection hoặc session pooler nếu mạng chỉ có IPv4). URL-encode ký tự đặc biệt trong password, dùng SSL theo hướng dẫn project. Không đặt URL DB ở Flutter.
 
-Khi sửa schema, tạo migration trên DB phát triển riêng bằng `npx prisma migrate dev --name ten_thay_doi` trong apps/api. Review SQL và commit cả migration. Database chung áp dụng bằng `npm run db:migrate`. Thêm policy RLS khi tạo bảng mới.
+Khi sửa schema, tạo migration trên DB phát triển riêng bằng `npx prisma migrate dev --name ten_thay_doi` trong backend. Review SQL và commit cả migration. Database chung áp dụng bằng `npm run db:migrate`. Thêm policy RLS khi tạo bảng mới.

@@ -15,7 +15,7 @@ Flutter lấy session từ Supabase SDK. Interceptor Dio đính kèm token vào 
 
 Scan nhận multipart, giới hạn 5 MiB, so MIME và chữ ký JPEG/PNG. Backend nhận diện loài trước rồi lấy nhãn bệnh và thông tin chăm sóc. Adapter Perenual khớp tên khoa học trước khi đọc chi tiết. Khi nhà cung cấp lỗi, API báo lỗi. Mode mock dùng bốn implementation cục bộ và trả `isMock: true`. Weather dùng tọa độ của request và ngày địa phương do Open-Meteo trả.
 
-Cấu trúc mobile chia theo feature. Profile chứa UI auth, scan tách model và upload trong data. Theme và router trong app. API có module theo endpoint, middleware auth, cấu hình tập trung, lỗi dùng chung. Chỉ tạo các thư mục có mã thực thi. npm workspace quản lý backend, Flutter dùng pub và lockfile riêng.
+Frontend đặt các file Dart trực tiếp trong `lib/`. Backend gom mã theo bốn thư mục trong `src/`: `routes/` xử lý endpoint, `services/` gọi nhà cung cấp, `config/` cấu hình ứng dụng và database, `middlewares/` xử lý xác thực và lỗi. Schema và migration nằm trong `backend/prisma/`.
 
 Supabase Storage dành cho ảnh được lưu sau này. Schema giữ object key. Khi triển khai chức năng lưu, tạo bucket private, kiểm tra ownership theo user ID và dùng signed URL khi xem ảnh.
 

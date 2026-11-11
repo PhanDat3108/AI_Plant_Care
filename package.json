@@ -2,21 +2,21 @@
   "name": "ai-plant-care",
   "private": true,
   "workspaces": [
-    "apps/api"
+    "backend"
   ],
   "engines": {
     "node": "24.x"
   },
   "scripts": {
-    "dev": "npm run dev -w apps/api",
-    "build": "npm run build -w apps/api",
-    "lint": "npm run lint -w apps/api",
-    "typecheck": "npm run typecheck -w apps/api",
-    "test": "npm run test -w apps/api",
-    "db:generate": "npm run db:generate -w apps/api",
-    "db:migrate": "npm run db:migrate -w apps/api",
-    "db:seed": "npm run db:seed -w apps/api",
-    "start": "npm run start -w apps/api"
+    "dev": "npm run dev -w backend",
+    "build": "npm run build -w backend",
+    "lint": "npm run lint -w backend",
+    "typecheck": "npm run typecheck -w backend",
+    "test": "npm run test -w backend",
+    "db:generate": "npm run db:generate -w backend",
+    "db:migrate": "npm run db:migrate -w backend",
+    "db:seed": "npm run db:seed -w backend",
+    "start": "npm run start -w backend"
   },
   "overrides": {
     "@prisma/config": {

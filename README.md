@@ -4,9 +4,9 @@ Nền tảng Phase 1 cho ứng dụng chăm sóc cây của nhóm sinh viên. B�
 
 | Thư mục | Nội dung |
 | --- | --- |
-| `apps/mobile` | Flutter 3.47.5, Dart 3.13.4, Material 3, Riverpod, Dio, go_router, image_picker, Supabase Flutter và dependency thông báo local |
-| `apps/api` | Node 24, TypeScript, Express 5, Prisma, Zod, Vitest, migration và seed |
-| `infra` | Docker Compose PostgreSQL 16 cho máy cá nhân |
+| `frontend` | Flutter 3.47.5, Dart 3.13.4, Material 3, Riverpod, Dio, go_router, image_picker, Supabase Flutter và dependency thông báo local |
+| `backend` | Node 24, TypeScript, Express 5, Prisma, Zod, Vitest, migration và seed |
+| `backend/docker-compose.yml` | Docker Compose PostgreSQL 16 cho máy cá nhân |
 | `docs`, `.github` | Tài liệu nhóm, CI và mẫu PR |
 
 ### Clone và chạy backend
@@ -16,7 +16,7 @@ Cài Git, Node 24 và Flutter theo [macOS](docs/SETUP_MACOS.md) hoặc [Windows]
 ```sh
 git clone https://github.com/OWNER/ai-plant-care.git
 cd ai-plant-care
-node -e "require('fs').copyFileSync('apps/api/.env.example','apps/api/.env',require('fs').constants.COPYFILE_EXCL)"
+node -e "require('fs').copyFileSync('backend/.env.example','backend/.env',require('fs').constants.COPYFILE_EXCL)"
 npm ci
 npm run db:generate
 ```
@@ -24,20 +24,20 @@ npm run db:generate
 Lệnh sao chép dành cho lần đầu. File mẫu bật mock và user demo cố định trong development. Để chạy đầy đủ vườn và lịch bằng Docker:
 
 ```sh
-docker compose -f infra/docker-compose.yml up -d --wait
+docker compose -f backend/docker-compose.yml up -d --wait
 npm run db:migrate
 npm run db:seed
 npm run dev
 ```
 
-Nếu dùng Supabase Postgres, đặt hai URL trong `apps/api/.env` rồi chạy từ bước migrate. Nhóm trưởng quản lý migration cho database chung. Nếu chỉ demo quét ảnh, có thể chạy `npm run dev` ngay sau generate. Kiểm tra [health local](http://localhost:3100/api/v1/health) trong trình duyệt. Vườn và lịch cần database đã migrate. Dừng API bằng Ctrl+C và dừng DB bằng `docker compose -f infra/docker-compose.yml stop`.
+Nếu dùng Supabase Postgres, đặt hai URL trong `backend/.env` rồi chạy từ bước migrate. Nhóm trưởng quản lý migration cho database chung. Nếu chỉ demo quét ảnh, có thể chạy `npm run dev` ngay sau generate. Kiểm tra [health local](http://localhost:3100/api/v1/health) trong trình duyệt. Vườn và lịch cần database đã migrate. Dừng API bằng Ctrl+C và dừng DB bằng `docker compose -f backend/docker-compose.yml stop`.
 
 ### Chạy Flutter
 
 Trong terminal thứ hai, từ gốc repo:
 
 ```sh
-cd apps/mobile
+cd frontend
 flutter pub get
 flutter analyze
 flutter test
@@ -67,7 +67,7 @@ Mỗi thành viên tạo `feat/ten-chuc-nang` hoặc `fix/ten-loi`, push branch 
 
 Tại gốc repo, chạy `npm run lint`, `npm run typecheck`, `npm test` và `npm run build`. Để chạy thêm test cách ly hai owner, dùng database local đã migrate và đặt `TEST_DATABASE=true` cho tiến trình test (PowerShell: `$env:TEST_DATABASE="true"`). CI bật test này với PostgreSQL riêng.
 
-Khi API local đang chạy ở chế độ demo, từ apps/mobile chạy:
+Khi API local đang chạy ở chế độ demo, từ frontend chạy:
 ```sh
 flutter test --dart-define=LIVE_MOCK_API=http://127.0.0.1:3100/api/v1
 ```
