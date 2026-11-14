@@ -1,0 +1,19 @@
+name: ai-plant-care
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: plant
+      POSTGRES_DB: plantcare
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run npm run env:init first}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U plant -d plantcare"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+volumes:
+  postgres_data:

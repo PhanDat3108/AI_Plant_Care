@@ -12,7 +12,7 @@ flutter run
 
 ## Backend
 
-Khung thư mục cho phần máy chủ. Nhóm có thể bổ sung code sau buổi họp.
+Nền Express + TypeScript + Prisma và PostgreSQL đã có migration, seed demo, xác thực Supabase và API đọc vườn cây. Xem [cách cài và chạy backend](backend/README.md).
 
 | Thư mục | Dùng để |
 | --- | --- |
@@ -22,3 +22,5 @@ Khung thư mục cho phần máy chủ. Nhóm có thể bổ sung code sau buổ
 | `backend/src/middlewares/` | Xử lý chung giữa các request |
 | `backend/src/config/` | Đọc cấu hình ứng dụng |
 | `backend/tests/` | Viết kiểm thử backend |
+
+Thiết kế PostgreSQL, sơ đồ quan hệ và hướng dẫn tạo bảng nằm trong [backend/database](backend/database/README.md).

@@ -1,0 +1,203 @@
+generator client {
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  previewFeatures = ["partialIndexes"]
+}
+
+datasource db {
+  provider = "postgresql"
+  schemas  = ["plantcare"]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model care_logs {
+  id           String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  plant_id     String      @db.Uuid
+  request_id   String      @db.Uuid
+  task_id      String?     @unique @db.Uuid
+  kind         String
+  performed_at DateTime    @default(now()) @db.Timestamptz(6)
+  note         String?
+  plants       plants      @relation(fields: [plant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  care_tasks   care_tasks? @relation(fields: [task_id, plant_id, kind], references: [id, plant_id, kind], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([plant_id, request_id])
+  @@unique([task_id, plant_id, kind], map: "care_logs_task_plant_kind")
+  @@index([plant_id, performed_at(sort: Desc)], map: "logs_timeline")
+  @@schema("plantcare")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model care_schedules {
+  id            String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  plant_id      String       @db.Uuid
+  kind          String
+  interval_days Int
+  local_time    DateTime     @db.Time(6)
+  enabled       Boolean      @default(true)
+  plants        plants       @relation(fields: [plant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  care_tasks    care_tasks[]
+
+  @@unique([id, plant_id, kind])
+  @@unique([plant_id, kind])
+  @@schema("plantcare")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model care_tasks {
+  id                String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  schedule_id       String         @db.Uuid
+  plant_id          String         @db.Uuid
+  kind              String
+  original_due_at   DateTime       @db.Timestamptz(6)
+  due_at            DateTime       @db.Timestamptz(6)
+  state             String         @default("pending")
+  adjustment_reason String?
+  weather_snapshot  Json?
+  care_logs         care_logs?
+  care_schedules    care_schedules @relation(fields: [schedule_id, plant_id, kind], references: [id, plant_id, kind], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([id, plant_id, kind])
+  @@unique([schedule_id, original_due_at])
+  @@index([due_at, schedule_id], map: "tasks_due", where: raw("(state = 'pending'::text)"))
+  @@index([schedule_id], map: "tasks_schedule")
+  @@schema("plantcare")
+}
+
+model diseases {
+  id            String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code          String          @unique
+  display_name  String
+  scan_findings scan_findings[]
+
+  @@schema("plantcare")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model plant_species {
+  id                String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  scientific_name   String
+  common_name       String?
+  light_guide       String?
+  soil_guide        String?
+  water_guide       String?
+  temperature_guide String?
+  fertilizer_guide  String?
+  watering_days     Int?
+  fertilizing_days  Int?
+  care_source       String?
+  plants            plants[]
+  reference_images  reference_images[]
+  scans             scans[]
+
+  @@schema("plantcare")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model plants {
+  id                 String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  owner_id           String            @db.Uuid
+  species_id         String?           @db.Uuid
+  nickname           String
+  cover_image_key    String?
+  environment        String            @default("unknown")
+  region_name        String?
+  latitude           Decimal?          @db.Decimal(7, 4)
+  longitude          Decimal?          @db.Decimal(7, 4)
+  created_at         DateTime          @default(now()) @db.Timestamptz(6)
+  reference_image_id String?           @db.Uuid
+  care_logs          care_logs[]
+  care_schedules     care_schedules[]
+  reference_images   reference_images? @relation(fields: [reference_image_id, species_id], references: [id, species_id], onDelete: NoAction, onUpdate: NoAction, map: "cover_matches_species")
+  profiles           profiles          @relation(fields: [owner_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  plant_species      plant_species?    @relation(fields: [species_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  scans              scans[]
+
+  @@unique([owner_id, id])
+  @@index([owner_id, created_at(sort: Desc)], map: "plants_garden")
+  @@index([reference_image_id], map: "plants_reference_image")
+  @@index([species_id], map: "plants_species")
+  @@schema("plantcare")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model profiles {
+  id           String   @id @db.Uuid
+  display_name String
+  avatar_key   String?
+  timezone     String   @default("Asia/Ho_Chi_Minh")
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+  plants       plants[]
+  scans        scans[]
+
+  @@schema("plantcare")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model reference_images {
+  id                String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  species_id        String        @db.Uuid
+  provider          String
+  provider_image_id String
+  image_url         String
+  thumbnail_url     String?
+  attribution       String
+  source_url        String
+  license_name      String
+  license_url       String?
+  created_at        DateTime      @default(now()) @db.Timestamptz(6)
+  plants            plants[]
+  plant_species     plant_species @relation(fields: [species_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([id, species_id])
+  @@unique([provider, provider_image_id, species_id])
+  @@index([species_id], map: "reference_images_species")
+  @@schema("plantcare")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model scan_findings {
+  scan_id         String    @db.Uuid
+  position        Int
+  disease_id      String?   @db.Uuid
+  reported_name   String
+  confidence      Decimal?  @db.Decimal
+  symptoms        String?
+  possible_cause  String?
+  treatment_steps String[]  @default([])
+  guidance_source String?
+  diseases        diseases? @relation(fields: [disease_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  scans           scans     @relation(fields: [scan_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([scan_id, position])
+  @@index([disease_id], map: "findings_disease")
+  @@schema("plantcare")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model scans {
+  id                    String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  owner_id              String          @db.Uuid
+  request_id            String          @db.Uuid
+  plant_id              String?         @db.Uuid
+  image_key             String
+  mode                  String
+  source                String
+  is_mock               Boolean
+  scanned_at            DateTime        @default(now()) @db.Timestamptz(6)
+  species_id            String?         @db.Uuid
+  reported_species_name String?
+  species_confidence    Decimal?        @db.Decimal
+  health_status         String
+  scan_findings         scan_findings[]
+  profiles              profiles        @relation(fields: [owner_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  plants                plants?         @relation(fields: [owner_id, plant_id], references: [owner_id, id], onDelete: Cascade, onUpdate: NoAction)
+  plant_species         plant_species?  @relation(fields: [species_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([owner_id, request_id])
+  @@index([owner_id, scanned_at(sort: Desc)], map: "scans_owner")
+  @@index([species_id], map: "scans_species")
+  @@index([plant_id, scanned_at(sort: Desc), id(sort: Desc)], map: "scans_timeline")
+  @@schema("plantcare")
+}
