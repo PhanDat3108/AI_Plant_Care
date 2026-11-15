@@ -33,6 +33,7 @@ export const errors: ErrorRequestHandler = (
       "Dữ liệu gửi lên chưa hợp lệ.",
     );
   if (
+    !(error instanceof HttpError) &&
     error instanceof Error &&
     "status" in error &&
     [400, 413].includes(Number(error.status))

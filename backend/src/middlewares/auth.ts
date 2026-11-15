@@ -7,10 +7,27 @@ import { HttpError } from "./errors.js";
 const verifiedUser = z.object({
   id: z.uuid(),
   user_metadata: z
-    .object({ full_name: z.string().optional() })
+    .object({ full_name: z.unknown().optional(), name: z.unknown().optional() })
     .passthrough()
+    .nullable()
     .optional(),
 });
+
+export interface AuthenticatedUser {
+  id: string;
+  displayName: string;
+  isDemo: boolean;
+}
+
+function displayName(metadata: z.infer<typeof verifiedUser>["user_metadata"]) {
+  // Provider/user metadata is only a display hint, never a source of permissions.
+  for (const value of [metadata?.full_name, metadata?.name]) {
+    if (typeof value === "string" && value.trim()) {
+      return value.trim().slice(0, 100);
+    }
+  }
+  return "Người dùng";
+}
 export function authenticate(config: Config): RequestHandler {
   return async (req, res, next) => {
     if (config.NODE_ENV === "development" && config.DEV_AUTH_BYPASS) {
@@ -52,10 +69,9 @@ export function authenticate(config: Config): RequestHandler {
       const user = verifiedUser.parse(await response.json());
       res.locals.user = {
         id: user.id,
-        displayName:
-          user.user_metadata?.full_name?.trim().slice(0, 100) || "Người dùng",
+        displayName: displayName(user.user_metadata),
         isDemo: false,
-      };
+      } satisfies AuthenticatedUser;
     } catch (error) {
       if (error instanceof HttpError) throw error;
       throw new HttpError(

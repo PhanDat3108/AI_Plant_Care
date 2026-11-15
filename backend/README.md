@@ -126,3 +126,7 @@ test:db cần database đã migrate. Test tạo user/cây ngẫu nhiên và xóa
 Migration SQL giữ các CHECK, expression index và FK ghép. schema.prisma dùng cho Prisma Client; các CHECK vẫn được PostgreSQL thực thi. Khi sửa model, tạo migration mới, xem SQL để giữ các ràng buộc và áp trên DB riêng trước. Tránh sửa migration đã áp dụng. Sinh lại client bằng db:generate sau khi sửa schema. Field thời gian Postgres time được Prisma biểu diễn bằng Date có phần ngày quy ước. Xác suất/Decimal có thể được JSON serialize thành chuỗi; Flutter parse dạng num hoặc string theo hợp đồng endpoint.
 
 Khi build, mã sinh Prisma nằm trong dist/generated và được dùng bởi `npm start`. Nếu chuẩn bị artifact triển khai, chạy db:generate rồi build trước khi cài runtime dependencies bằng npm ci --omit=dev.
+
+## API Auth cho frontend
+
+Đã có API Express đăng ký, đăng nhập, refresh, quên/đổi mật khẩu, đăng xuất và Google OAuth/PKCE. Xem [hợp đồng API và cấu hình cloud](../docs/AUTH_SETUP.md). Google, SMTP và callback cần cấu hình trước khi kiểm thử đầy đủ. Frontend giữ nguyên.

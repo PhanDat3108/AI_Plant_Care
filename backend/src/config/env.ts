@@ -24,6 +24,7 @@ export function readConfig(input: NodeJS.ProcessEnv) {
         .union([z.url({ protocol: /^https$/ }), z.literal("")])
         .optional(),
       SUPABASE_PUBLISHABLE_KEY: z.string().optional(),
+      AUTH_REDIRECT_URL: z.union([z.url(), z.literal("")]).optional(),
     })
     .parse(input);
 
