@@ -2,7 +2,40 @@
 
 Node.js 24, Express 5, TypeScript, Prisma 7.10.1 và PostgreSQL 16+. Nền hiện có kết nối DB, migration, seed demo, xác minh Supabase access token, kiểm tra quyền đọc cây, validation, logging và xử lý lỗi tập trung.
 
-## Chạy lần đầu trên Windows hoặc macOS
+## Chạy với DB Supabase chung của nhóm
+
+Cài Node.js 24 và Git. Không cần Docker khi dùng Supabase. Các lệnh bên dưới chạy tại thư mục `backend`.
+
+1. Nhận file `.env` từ Đạt qua kênh riêng của nhóm và đặt tại `backend/.env`. Đây là file chứa mật khẩu DB, không commit hoặc đưa vào ứng dụng Flutter. `.env.example` chỉ là mẫu, không kết nối được nếu chưa điền thông tin thật.
+2. Kiểm tra repo có `backend/certs/supabase-ca.crt`. `DATABASE_URL` trong `.env` dùng `sslmode=verify-full&sslrootcert=certs/supabase-ca.crt`. Giữ đường dẫn tương đối này để dùng trên Windows/macOS, luôn chạy lệnh từ thư mục backend.
+3. Cài dependencies và sinh Prisma Client:
+
+```sh
+npm ci
+npm run db:generate
+npm run dev
+```
+
+Mở http://localhost:3100/api/v1/ready. Kết quả đúng là HTTP 200 và:
+
+```json
+{"success":true,"data":{"status":"ready"},"error":null,"message":"OK"}
+```
+
+DB Supabase chung đã được áp dụng các migration ban đầu. Người mới nhận code không cần chạy lại migration hay seed. Không chạy `db:seed`, `prisma migrate reset` hoặc thử thay đổi bảng trên DB chung. Khi nhóm có migration mới đã được duyệt, người phụ trách DB chạy `npm run db:migrate`; thành viên cập nhật code rồi chạy `npm run db:generate`. Chạy kiểm thử ghi dữ liệu trên DB riêng.
+
+Giữ `DEV_AUTH_BYPASS=false` với Supabase chung. Middleware xác minh token đã có, nhưng cấu hình và kiểm thử đăng nhập Supabase Auth/Flutter còn đang hoàn thiện. Hai biến `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` có thể đang trống: `/health` và `/ready` vẫn dùng được, các API `/me`, `/plants` cần token hợp lệ và cấu hình Auth. Chưa có token thì HTTP 401 là bình thường.
+
+Mỗi lần đổi `.env`, dừng server bằng Ctrl+C rồi chạy lại `npm run dev`. Trên PowerShell nếu `npm.ps1` bị chặn, dùng `npm.cmd` thay cho `npm`.
+
+### Xử lý lỗi thường gặp
+
+- `DATABASE_UNAVAILABLE`: kiểm tra `DATABASE_URL`, Internet, chứng chỉ và trạng thái project. Thông báo này cũng có thể do SSL, không đồng nghĩa cần chạy lại migration.
+- `self-signed certificate in certificate chain`: kiểm tra file CA và hai tham số SSL nêu trên; không tắt xác thực chứng chỉ.
+- Cổng 3100 đã được dùng: dừng backend cũ trước khi chạy bản mới.
+- Sửa `.env` mà API vẫn dùng cấu hình cũ: khởi động lại backend.
+
+## Tùy chọn: chạy DB riêng trên máy (demo local)
 
 Mở terminal tại thư mục backend:
 
@@ -39,6 +72,8 @@ npm run dev
 `npm run db:stop` dừng DB Docker. Mật khẩu khởi tạo trong .env gắn với cluster/volume lần tạo đầu tiên. Đổi .env sau đó cần đồng thời đổi mật khẩu PostgreSQL bằng tài khoản quản trị.
 
 ## Supabase khi nhóm đã có project
+
+Phần này dành cho người phụ trách khởi tạo project mới; thành viên dùng DB chung làm theo phần đầu README.
 
 1. Từ mục Connect của Supabase, đặt DATABASE_URL cho runtime và DIRECT_URL cho migration trong backend/.env. Session pooler phù hợp khi máy chỉ có IPv4; lấy hostname và port chính xác từ dashboard. Cấu hình TLS theo hướng dẫn của project.
 2. Chạy `npm run db:migrate`. Schema nghiệp vụ plantcare dành cho Express; giữ ngoài danh sách schema public của Data API. Runtime nên dùng role DB riêng với USAGE trên schema và quyền dữ liệu cần thiết; role migration quản lý DDL. Hai URL local ban đầu dùng tài khoản phát triển riêng của dự án.
