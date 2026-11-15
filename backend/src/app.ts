@@ -1,3 +1,4 @@
+import { authCallback } from "./routes/auth-callback.js";
 import { randomUUID } from "node:crypto";
 import express from "express";
 import cors from "cors";
@@ -28,6 +29,8 @@ export function createApp(config: Config, db: Database) {
     cors({ origin: config.CORS_ORIGINS }),
     express.json({ limit: "64kb" }),
   );
+  if (config.NODE_ENV === "development")
+    app.get("/auth/callback", authCallback);
   app.use("/api/v1", apiRoutes(db, config));
   app.use(() => {
     throw new HttpError(404, "NOT_FOUND", "Đường dẫn chưa tồn tại.");
