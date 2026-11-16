@@ -69,24 +69,24 @@ class _NavigationBottomBarState extends State<NavigationBottomBar> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _NavItem(
+              _navItem(
                 icon: Icons.local_florist_rounded,
                 label: 'Vườn cây',
                 index: 0,
               ),
-              _NavItem(
+              _navItem(
                 icon: Icons.check_circle_outline_rounded,
                 label: 'Nhiệm vụ',
                 index: 1,
               ),
-              const SizedBox(width: 48), // Khoảng trống cho nút FAB ở giữa
-              _NavItem(
+              const SizedBox(width: 48), 
+              _navItem(
                 icon: Icons.notifications_none_rounded,
                 label: 'Thông báo',
                 index: 2,
                 hasBadge: true,
               ),
-              _NavItem(
+              _navItem(
                 icon: Icons.person_outline_rounded,
                 label: 'Hồ sơ',
                 index: 3,
@@ -99,7 +99,7 @@ class _NavigationBottomBarState extends State<NavigationBottomBar> {
   }
 
   // nút bấm trên thanh điều hướng
-  Widget _NavItem({
+  Widget _navItem({
     required IconData icon,
     required String label,
     required int index,
