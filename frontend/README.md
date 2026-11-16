@@ -36,3 +36,11 @@ Khi triển khai lớp gọi API, dùng base URL theo thiết bị:
 Điện thoại thật và máy backend cần cùng mạng, firewall cho phép cổng 3100. Kiểm tra đường dẫn `/ready` trước khi thử nghiệp vụ. Cấu hình base URL, quyền mạng/HTTP development và Supabase Auth trong Flutter chưa được triển khai; bảng trên là hướng dẫn cho lúc tích hợp.
 
 API cần đăng nhập sẽ yêu cầu header `Authorization: Bearer <access_token>`. Token lấy từ Supabase Auth sau đăng nhập; publishable key không thay thế access token của người dùng. Cấu hình và kiểm thử luồng đăng nhập đang được hoàn thiện.
+
+## Cấu trúc thư mục & Quy ước phát triển UI
+
+### Các thành phần nền tảng đã dựng sẵn
+- `lib/theme/app_theme.dart`: Bảng màu chuẩn toàn app (nền kem `#FAF7F0`, xanh lá đậm `#2E5A36`), bo góc 16dp và cấu hình Material 3.
+- `lib/models/`: Các class dữ liệu (`PlantModel`, `TaskModel`, `NotificationModel`...).
+- `lib/screens/navigation_bottombar.dart`: Thanh điều hướng BottomBar 5 mục đối xứng (Vườn cây, Việc cần làm, nút nổi Quét AI ở giữa, Thông báo, Hồ sơ) kèm các màn hình khung tạm thời để app chạy được ngay.
+
