@@ -4,7 +4,7 @@ import '../models/task_model.dart';
 import '../models/notification_model.dart';
 
 class MockDataService {
-  // --- HÀM LÕI: Mô phỏng gọi API ---
+  // HÀM LÕI: Mô phỏng gọi API
   Future<T> _simulateNetworkCall<T>(FutureOr<T> Function() computation) async {
     try {
       // delay 1.5 giây để test được trạng thái isLoading trên UI
@@ -23,7 +23,7 @@ class MockDataService {
     }
   }
 
-  // --- DỮ LIỆU: Việc cần làm (Tasks) ---
+  // DỮ LIỆU: Việc cần làm (Tasks)
   Future<List<TaskModel>> getTodayTasks() async {
     return _simulateNetworkCall( () {
       return [
@@ -55,7 +55,7 @@ class MockDataService {
     });
   }
 
-  // --- 2. DỮ LIỆU: Thông báo (Notifications) ---
+  // 2. DỮ LIỆU: Thông báo (Notifications)
   Future<List<AppNotification>> getNotifications() async {
     return _simulateNetworkCall(() {
       return [
@@ -87,7 +87,7 @@ class MockDataService {
     });
   }
 
-  // --- 3. DỮ LIỆU: Chi tiết cây (Plant Detail) ---
+  // 3. DỮ LIỆU: Chi tiết cây (Plant Detail)
   Future<PlantModel> getPlantDetail(String plantId) async {
     return _simulateNetworkCall(() {
       // Mock tạm một cây để test màn hình chi tiết
@@ -122,7 +122,7 @@ class MockDataService {
     });
   }
 
-  // --- 4. DỮ LIỆU: Giả lập gọi AI quét bệnh ---
+  // 4. DỮ LIỆU: Giả lập gọi AI quét bệnh
   Future<PlantModel> scanAndDiagnose(String imagePath) async {
     return _simulateNetworkCall(() {
       // Mock kết quả quét Bàng Singapore bị đốm lá như trong bản thiết kế
@@ -152,4 +152,4 @@ class MockDataService {
   }
 }
 
-// --- 5. DỮ LIỆU: Danh sách vườn cây ---
+// 5. DỮ LIỆU: Danh sách vườn cây
