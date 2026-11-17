@@ -101,6 +101,8 @@ Development bypass dùng UUID cố định trong src/config/demo.ts. Đã có l�
 
 ## Cấu trúc để chia việc
 
+Xem [sơ đồ phân lớp và bảng file theo chức năng](../docs/BACKEND_ARCHITECTURE.md). Luồng chính: **Routes → Controller → Service → Database**; mọi truy vấn dữ liệu của API và worker đặt tại service.
+
 - src/config — kiểm tra .env, Prisma Client và người dùng demo.
 - src/middlewares — xác thực token và chuyển lỗi thành JSON.
 - src/routes — khai báo URL.
@@ -132,6 +134,8 @@ Khi build, mã sinh Prisma nằm trong dist/generated và được dùng bởi `
 Đã có API Express đăng ký, đăng nhập, refresh, quên/đổi mật khẩu, đăng xuất và Google OAuth/PKCE. Xem [hợp đồng API và cấu hình cloud](../docs/AUTH_SETUP.md). Google, SMTP và callback cần cấu hình trước khi kiểm thử đầy đủ. Frontend giữ nguyên.
 
 ## Hồ sơ, lịch chăm sóc và lịch sử thông báo
+
+Màn hình Hồ sơ: [API và dữ liệu frontend cần](../docs/PROFILE_API.md). GET /me và GET /me/stats có thêm thống kê tưới/bón phân/điều trị từ nhật ký; PATCH /me cập nhật tên/múi giờ, đăng xuất dùng POST /auth/logout.
 
 Xem [hợp đồng API và phần chờ module khác](../docs/BACKEND_FEATURES_1_2_5.md). Sau khi cài dependencies và db:generate, mở terminal riêng chạy `npm run reminders:watch` để tự tạo việc và hộp thư nhắc theo lịch/thời tiết. `npm run reminders:run` chạy một lượt. Push tới điện thoại chưa tích hợp.
 

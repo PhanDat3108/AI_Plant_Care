@@ -2,7 +2,7 @@ import type { RequestHandler } from "express";
 import { z } from "zod";
 import type { Config } from "../config/env.js";
 import type { Database } from "../config/database.js";
-import { HttpError, success } from "../middlewares/errors.js";
+import { success } from "../middlewares/errors.js";
 import { careDataService } from "../services/care-data.js";
 import {
   generationInputSchema,
@@ -19,19 +19,6 @@ export function careDataController(
   provider: CareProvider = createCareProvider(config),
 ) {
   const service = careDataService(db, provider);
-  // Roles come from server configuration, never editable Supabase user_metadata.
-  const requireReviewer: RequestHandler = (_req, res, next) => {
-    if (
-      res.locals.user.isDemo ||
-      !config.CARE_REVIEWER_IDS.includes(res.locals.user.id)
-    )
-      throw new HttpError(
-        403,
-        "CARE_REVIEWER_REQUIRED",
-        "Tài khoản chưa được cấp quyền duyệt dữ liệu loài.",
-      );
-    next();
-  };
   const readPlant: RequestHandler = async (req, res) => {
     success(
       res,
@@ -72,7 +59,6 @@ export function careDataController(
     );
   };
   return {
-    requireReviewer,
     readPlant,
     enrichPlant,
     readSpecies,

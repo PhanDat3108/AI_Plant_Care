@@ -32,6 +32,7 @@ const profile = {
 beforeEach(() => {
   vi.spyOn(db.plants, "count").mockResolvedValue(0);
   vi.spyOn(db.scans, "count").mockResolvedValue(0);
+  vi.spyOn(db.care_logs, "groupBy").mockResolvedValue([]);
 });
 
 afterEach(() => {

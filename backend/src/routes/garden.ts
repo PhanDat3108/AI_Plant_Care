@@ -2,23 +2,17 @@ import { Router } from "express";
 import type { Database } from "../config/database.js";
 import type { Config } from "../config/env.js";
 import { authenticate } from "../middlewares/auth.js";
-import {
-  addPlantController,
-  getGardenController,
-  updateNicknameController,
-  removePlantController,
-  gardenController,
-} from "../controllers/garden.js";
+import { gardenController } from "../controllers/garden.js";
 
 /**
  * Khởi tạo Router quản lý vườn cây của người dùng.
  * @param db Database Prisma Client
- * @param config Cấu hình ứng dụng (để áp dụng middleware authenticate nếu gắn router độc lập)
+ * @param config Cấu hình ứng dụng (để áp dụng middleware authenticate nếu cần)
  */
 export function gardenRoutes(db: Database, config?: Config): Router {
   const router = Router();
 
-  // Áp dụng middleware xác thực token Supabase / Dev bypass nếu có truyền config
+  // Áp dụng middleware xác thực token nếu có truyền config
   if (config) {
     router.use(authenticate(config));
   }
@@ -52,11 +46,3 @@ export function gardenRoutes(db: Database, config?: Config): Router {
 
   return router;
 }
-
-// Export các controller trực tiếp để thuận tiện sử dụng nếu cần
-export {
-  addPlantController,
-  getGardenController,
-  updateNicknameController,
-  removePlantController,
-};
