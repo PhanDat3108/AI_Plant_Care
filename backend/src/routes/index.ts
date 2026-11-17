@@ -16,11 +16,13 @@ export function apiRoutes(db: Database, config: Config) {
   router.use(healthRoutes(db, config));
   router.use("/auth", authRoutes(config));
   router.use(authenticate(config));
+  
   router.use("/me", profileRoutes(db));
-  router.use(gardenRoutes(db));
+  router.use(gardenRoutes(db, config)); // Truyền thêm config nếu gardenRoutes của bạn cần dùng authenticate
   router.use(careDataRoutes(db, config));
   router.use(carePlanRoutes(db));
   router.use(schedulesRoutes(db));
   router.use(notificationsRoutes(db));
+  
   return router;
 }
