@@ -12,6 +12,8 @@ Không gửi file `.env` backend cho app sử dụng. Frontend chỉ cần base 
 
 Mọi đường dẫn bên dưới bắt đầu bằng `/api/v1`. Body JSON, response dạng `{success,data,error,message}`. Các response Auth có Cache-Control no-store. Không log/lưu mật khẩu, token vào console.
 
+Code Auth chia theo luồng `src/routes/auth.ts` → `src/controllers/auth.ts` → `src/services/auth.ts`: routes gắn URL/middleware; controller kiểm tra input và trả HTTP response; service gọi Supabase và xử lý kết quả xác thực, không phụ thuộc Express req/res. `src/middlewares/auth.ts` xác minh token, `src/middlewares/auth-no-store.ts` đặt chính sách không cache. Việc tách file không thay đổi hợp đồng API dưới đây.
+
 | Method/path | Body | Kết quả |
 | --- | --- | --- |
 | POST /auth/register | email, password (8–256 ký tự), full_name | confirmation_required, session (null khi cần xác nhận email) |
