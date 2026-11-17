@@ -36,6 +36,9 @@ export function apiRoutes(db: Database, config: Config) {
   const garden = gardenController(db);
   router.get("/plants", garden.list);
   router.get("/plants/:id", garden.detail);
+  router.post("/plants", garden.addPlant);
+  router.patch("/plants/:id", garden.updateNickname);
+  router.delete("/plants/:id", garden.removePlant);
   const careData = careDataController(db, config);
   router.get("/plants/:id/care-data", careData.readPlant);
   router.post("/plants/:id/care-data/enrich", careData.enrichPlant);
