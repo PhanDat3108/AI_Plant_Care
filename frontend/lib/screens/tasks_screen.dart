@@ -73,7 +73,7 @@ class _TasksScreenState extends State<TasksScreen> {
     );
   }
 
-  // --- Bộ định tuyến Trạng thái (Loading / Error / Empty / Data) ---
+  // Bộ định tuyến Trạng thái (Loading / Error / Empty / Data) 
   Widget _buildBodyContent() {
     if (_isLoading) {
       return const Center(
@@ -97,7 +97,7 @@ class _TasksScreenState extends State<TasksScreen> {
               ),
               const SizedBox(height: 24),
               ElevatedButton.icon(
-                onPressed: _loadTasks, // Nút "Thử lại" làm lối thoát
+                onPressed: _loadTasks, 
                 icon: const Icon(Icons.refresh_rounded),
                 label: const Text('Thử lại'),
               ),
@@ -106,7 +106,7 @@ class _TasksScreenState extends State<TasksScreen> {
         ),
       );
     }
-
+//khi ko có nhiệm vụ nào
     if (_tasks.isEmpty) {
       return const Center(
         child: Column(
@@ -133,6 +133,7 @@ class _TasksScreenState extends State<TasksScreen> {
     );
   }
 
+// Header
   Widget _buildHeader() {
     return Container(
       width: double.infinity,
@@ -166,6 +167,7 @@ class _TasksScreenState extends State<TasksScreen> {
     );
   }
 
+// tìm kiếm và tiến trình
   Widget _buildFilterAndProgress() {
     // Tính toán linh hoạt số task đã xong
     final completedCount = _tasks.where((t) => t.isCompleted).length;
@@ -197,6 +199,7 @@ class _TasksScreenState extends State<TasksScreen> {
     );
   }
 
+// thẻ nhiệm vụ
   Widget _buildTaskCard(TaskModel task) {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -250,6 +253,7 @@ class _TasksScreenState extends State<TasksScreen> {
     );
   }
 
+// tag công việc
   Widget _buildTaskTag(TaskType type, bool isCompleted) {
     if (isCompleted) {
       // Làm mờ tag đi khi task đã hoàn thành
