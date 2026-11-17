@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../models/notification_model.dart';
+import '../services/mock_data_service.dart';
 
 class NotificationScreen extends StatefulWidget {
   const NotificationScreen({super.key});
@@ -10,14 +11,68 @@ class NotificationScreen extends StatefulWidget {
 }
 
 class _NotificationScreenState extends State<NotificationScreen> {
-  // Dữ liệu tĩnh tạm thời (Bước 1: UI)
-  final List<AppNotification> _mockNotifications = [
-    AppNotification(id: 'n1', title: 'Đến giờ tưới cây rồi!', body: 'Bé Kim Tiền đang chờ được tưới nước sáng nay.', time: DateTime.now(), type: NotificationType.reminder, isRead: false),
-    AppNotification(id: 'n2', title: 'Phân tích AI hoàn tất', body: 'Bàng Singapore có dấu hiệu đốm lá (94% chính xác).', time: DateTime.now(), type: NotificationType.aiResult, isRead: false),
-    AppNotification(id: 'n3', title: 'Cảnh báo độ ẩm cao', body: 'Độ ẩm trên 85%, lưu ý phòng nấm cho cây.', time: DateTime.now(), type: NotificationType.alert, isRead: true),
-  ];
+  final MockDataService _dataService = MockDataService();
+  
+  List<AppNotification> _notifications = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+  String _selectedFilter = 'Tất cả';
 
-  String _selectedFilter = 'Tất cả'; // Trạng thái tĩnh của Filter
+  @override
+  void initState() {
+    super.initState();
+    _loadNotifications();
+  }
+
+  // --- Xử lý dữ liệu & Bắt lỗi ---
+  Future<void> _loadNotifications() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final data = await _dataService.getNotifications();
+      setState(() {
+        _notifications = data;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = e.toString().replaceAll('Exception: ', '');
+        _isLoading = false;
+      });
+    }
+  }
+
+  // --- Xử lý Logic Tương tác ---
+  void _markAllAsRead() {
+    setState(() {
+      _notifications = _notifications.map((n) => n.copyWith(isRead: true)).toList();
+    });
+  }
+
+  void _deleteNotification(String id) {
+    setState(() {
+      _notifications.removeWhere((n) => n.id == id);
+    });
+  }
+
+  void _setFilter(String filter) {
+    setState(() {
+      _selectedFilter = filter;
+    });
+  }
+
+  // Lọc danh sách trước khi hiển thị
+  List<AppNotification> get _filteredNotifications {
+    if (_selectedFilter == 'Chưa đọc') {
+      return _notifications.where((n) => !n.isRead).toList();
+    } else if (_selectedFilter == 'Kết quả AI') {
+      return _notifications.where((n) => n.type == NotificationType.aiResult).toList();
+    }
+    return _notifications;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,21 +82,80 @@ class _NotificationScreenState extends State<NotificationScreen> {
           _buildHeader(),
           _buildFilterChips(),
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.only(top: 8, bottom: 80), 
-              itemCount: _mockNotifications.length,
-              itemBuilder: (context, index) {
-                return _buildNotificationCard(_mockNotifications[index]);
-              },
-            ),
+            child: _buildBodyContent(),
           ),
         ],
       ),
     );
   }
 
-  // --- 1. Header & Nút "Đọc tất cả" ---
+  // Bộ định tuyến Trạng thái (Loading / Error / Empty / Data) 
+  Widget _buildBodyContent() {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: AppTheme.primaryColor),
+      );
+    }
+
+    if (_errorMessage != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.cloud_off_rounded, size: 64, color: AppTheme.sickBadgeText),
+              const SizedBox(height: 16),
+              Text(
+                _errorMessage!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppTheme.subTextColor, fontSize: 16),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: _loadNotifications,
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('Thử lại'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final displayList = _filteredNotifications;
+
+    if (displayList.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.notifications_paused_rounded, size: 64, color: AppTheme.appBarColor),
+            const SizedBox(height: 16),
+            Text(
+              _selectedFilter == 'Tất cả' 
+                  ? 'Bạn chưa có thông báo nào.' 
+                  : 'Không có thông báo phù hợp bộ lọc.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppTheme.subTextColor, fontSize: 16),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.only(top: 8, bottom: 80),
+      itemCount: displayList.length,
+      itemBuilder: (context, index) {
+        return _buildNotificationCard(displayList[index]);
+      },
+    );
+  }
+
   Widget _buildHeader() {
+    final unreadCount = _notifications.where((n) => !n.isRead).length;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.only(top: 60, left: 24, right: 24, bottom: 16),
@@ -53,30 +167,30 @@ class _NotificationScreenState extends State<NotificationScreen> {
             'Thông báo',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 28),
           ),
-          InkWell(
-            onTap: () {}, 
-            borderRadius: BorderRadius.circular(16),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: const Row(
-                children: [
-                  Text('Đọc tất cả', style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold)),
-                  SizedBox(width: 4),
-                  Icon(Icons.check_circle_outline, size: 18, color: AppTheme.primaryColor),
-                ],
+          if (unreadCount > 0) // Chỉ hiện nút khi có thông báo chưa đọc
+            InkWell(
+              onTap: _markAllAsRead,
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Row(
+                  children: [
+                    Text('Đọc tất cả', style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold)),
+                    SizedBox(width: 4),
+                    Icon(Icons.check_circle_outline, size: 18, color: AppTheme.primaryColor),
+                  ],
+                ),
               ),
             ),
-          ),
         ],
       ),
     );
   }
 
-  // --- 2. Thanh Filter (Chip) ---
   Widget _buildFilterChips() {
     final filters = ['Tất cả', 'Chưa đọc', 'Kết quả AI'];
 
@@ -92,7 +206,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
             return Padding(
               padding: const EdgeInsets.only(right: 12),
               child: InkWell(
-                onTap: () {},
+                onTap: () => _setFilter(filter),
                 borderRadius: BorderRadius.circular(20),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -119,15 +233,13 @@ class _NotificationScreenState extends State<NotificationScreen> {
     );
   }
 
-  // --- 3. Card Thông báo (Có tính năng Vuốt để xóa) ---
   Widget _buildNotificationCard(AppNotification notification) {
-    // Tùy chỉnh màu sắc, icon theo loại thông báo
     Color bgColor = AppTheme.cardColor;
     IconData iconData = Icons.notifications;
     Color iconColor = AppTheme.subTextColor;
     
     if (notification.type == NotificationType.reminder) {
-      bgColor = const Color(0xFFE0F7FA); 
+      bgColor = const Color(0xFFE0F7FA);
       iconData = Icons.water_drop_rounded;
       iconColor = const Color(0xFF0277BD);
     } else if (notification.type == NotificationType.aiResult) {
@@ -142,64 +254,87 @@ class _NotificationScreenState extends State<NotificationScreen> {
       background: Container(
         margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
         decoration: BoxDecoration(
-          color: AppTheme.sickBadgeText, 
+          color: AppTheme.sickBadgeText,
           borderRadius: BorderRadius.circular(16),
         ),
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 24),
         child: const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 32),
       ),
-      onDismissed: (direction) {}, 
+      onDismissed: (direction) {
+        _deleteNotification(notification.id);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Đã xóa thông báo'),
+            duration: Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      },
       child: Card(
         color: notification.isRead ? AppTheme.cardColor : bgColor,
         margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              CircleAvatar(
-                radius: 28,
-                backgroundColor: notification.isRead ? AppTheme.scaffoldBackgroundColor : Colors.white.withOpacity(0.6),
-                child: Icon(iconData, color: iconColor, size: 28),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      notification.title,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontSize: 16,
-                        color: notification.isRead ? AppTheme.subTextColor : AppTheme.titleTextColor,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      notification.body,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Vừa xong', // Mock text thời gian
-                      style: TextStyle(color: AppTheme.subTextColor.withOpacity(0.7), fontSize: 12),
-                    ),
-                  ],
+        child: InkWell(
+          onTap: () {
+            // Click vào để đánh dấu đã đọc
+            if (!notification.isRead) {
+              setState(() {
+                final index = _notifications.indexWhere((n) => n.id == notification.id);
+                if (index != -1) {
+                  _notifications[index] = _notifications[index].copyWith(isRead: true);
+                }
+              });
+            }
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CircleAvatar(
+                  radius: 28,
+                  backgroundColor: notification.isRead ? AppTheme.scaffoldBackgroundColor : Colors.white.withOpacity(0.6),
+                  child: Icon(iconData, color: iconColor, size: 28),
                 ),
-              ),
-              // Chấm chỉ thị chưa đọc
-              if (!notification.isRead)
-                Container(
-                  width: 12,
-                  height: 12,
-                  margin: const EdgeInsets.only(top: 4, left: 8),
-                  decoration: const BoxDecoration(
-                    color: AppTheme.primaryColor,
-                    shape: BoxShape.circle,
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        notification.title,
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontSize: 16,
+                          color: notification.isRead ? AppTheme.subTextColor : AppTheme.titleTextColor,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        notification.body,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      const SizedBox(height: 8),
+                      // Tạm mô phỏng thời gian tương đối
+                      Text(
+                        'Vừa xong',
+                        style: TextStyle(color: AppTheme.subTextColor.withOpacity(0.7), fontSize: 12),
+                      ),
+                    ],
                   ),
                 ),
-            ],
+                if (!notification.isRead)
+                  Container(
+                    width: 12,
+                    height: 12,
+                    margin: const EdgeInsets.only(top: 4, left: 8),
+                    decoration: const BoxDecoration(
+                      color: AppTheme.primaryColor,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),
