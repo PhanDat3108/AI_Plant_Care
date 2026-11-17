@@ -8,6 +8,13 @@ export interface ProfileUpdate {
 
 export function profileService(db: Database) {
   return {
+    async stats(userId: string) {
+      const [total_plants, total_ai_scans] = await Promise.all([
+        db.plants.count({ where: { owner_id: userId } }),
+        db.scans.count({ where: { owner_id: userId } }),
+      ]);
+      return { total_plants, total_ai_scans };
+    },
     get(user: AuthenticatedUser) {
       // Repeated logins must not overwrite a name the user changed in the app.
       return db.profiles.upsert({

@@ -6,6 +6,7 @@ import { HttpError } from "./errors.js";
 
 const verifiedUser = z.object({
   id: z.uuid(),
+  email: z.unknown().optional(),
   user_metadata: z
     .object({ full_name: z.unknown().optional(), name: z.unknown().optional() })
     .passthrough()
@@ -17,6 +18,8 @@ export interface AuthenticatedUser {
   id: string;
   displayName: string;
   isDemo: boolean;
+  email?: string | null;
+  avatarUrl?: string | null;
 }
 
 function displayName(metadata: z.infer<typeof verifiedUser>["user_metadata"]) {
@@ -27,6 +30,16 @@ function displayName(metadata: z.infer<typeof verifiedUser>["user_metadata"]) {
     }
   }
   return "Người dùng";
+}
+function avatarUrl(metadata: z.infer<typeof verifiedUser>["user_metadata"]) {
+  for (const value of [metadata?.avatar_url, metadata?.picture]) {
+    const parsed = z
+      .url({ protocol: /^https$/ })
+      .max(2048)
+      .safeParse(value);
+    if (parsed.success) return parsed.data;
+  }
+  return null;
 }
 export function authenticate(config: Config): RequestHandler {
   return async (req, res, next) => {
@@ -71,6 +84,8 @@ export function authenticate(config: Config): RequestHandler {
         id: user.id,
         displayName: displayName(user.user_metadata),
         isDemo: false,
+        email: typeof user.email === "string" ? user.email : null,
+        avatarUrl: avatarUrl(user.user_metadata),
       } satisfies AuthenticatedUser;
     } catch (error) {
       if (error instanceof HttpError) throw error;

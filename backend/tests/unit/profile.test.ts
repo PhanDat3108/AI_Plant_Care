@@ -1,4 +1,12 @@
-import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
+import {
+  afterAll,
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import request from "supertest";
 import { createApp } from "../../src/app.js";
 import { readConfig } from "../../src/config/env.js";
@@ -20,6 +28,11 @@ const profile = {
   timezone: "Asia/Ho_Chi_Minh",
   created_at: new Date("2026-01-01T00:00:00Z"),
 };
+
+beforeEach(() => {
+  vi.spyOn(db.plants, "count").mockResolvedValue(0);
+  vi.spyOn(db.scans, "count").mockResolvedValue(0);
+});
 
 afterEach(() => {
   vi.restoreAllMocks();

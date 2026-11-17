@@ -24,7 +24,7 @@ Mở http://localhost:3100/api/v1/ready. Kết quả đúng là HTTP 200 và:
 
 DB Supabase chung đã được áp dụng các migration ban đầu. Người mới nhận code không cần chạy lại migration hay seed. Không chạy `db:seed`, `prisma migrate reset` hoặc thử thay đổi bảng trên DB chung. Khi nhóm có migration mới đã được duyệt, người phụ trách DB chạy `npm run db:migrate`; thành viên cập nhật code rồi chạy `npm run db:generate`. Chạy kiểm thử ghi dữ liệu trên DB riêng.
 
-Giữ `DEV_AUTH_BYPASS=false` với Supabase chung. Middleware xác minh token đã có, nhưng cấu hình và kiểm thử đăng nhập Supabase Auth/Flutter còn đang hoàn thiện. Hai biến `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` có thể đang trống: `/health` và `/ready` vẫn dùng được, các API `/me`, `/plants` cần token hợp lệ và cấu hình Auth. Chưa có token thì HTTP 401 là bình thường.
+Giữ `DEV_AUTH_BYPASS=false` với Supabase chung. Backend đã có API Auth và middleware xác minh token. Điền `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` theo project: `/health` và `/ready` công khai, các API `/me`, `/plants` cần token hợp lệ và cấu hình Auth. Chưa có token thì HTTP 401 là bình thường. Flutter chưa được tích hợp trong phần backend này.
 
 Mỗi lần đổi `.env`, dừng server bằng Ctrl+C rồi chạy lại `npm run dev`. Trên PowerShell nếu `npm.ps1` bị chặn, dùng `npm.cmd` thay cho `npm`.
 
@@ -81,7 +81,7 @@ Phần này dành cho người phụ trách khởi tạo project mới; thành v
 4. Có thể chạy database/002_supabase_auth_optional.sql trong Supabase SQL Editor để ràng buộc profiles.id với auth.users.id. Mọi profile hiện có cần tương ứng một tài khoản Auth trước khi áp dụng. Seed demo cố định phù hợp database local.
 5. Khi triển khai dùng NODE_ENV=production. Bypass bật ở staging/production làm ứng dụng từ chối khởi động. Chuẩn bị bucket private cho ảnh khi nhóm viết chức năng upload; schema lưu object key và metadata ảnh tham khảo.
 
-Tên key trong .env.example là cấu hình mẫu. `env:init` tạo mật khẩu local ngẫu nhiên và không ghi đè .env hiện có. API key nhà cung cấp AI sẽ được thêm khi triển khai adapter, lưu phía backend.
+Tên key trong .env.example là cấu hình mẫu. `env:init` tạo mật khẩu local ngẫu nhiên và không ghi đè .env hiện có. `GEMINI_API_KEY` dùng cho adapter bổ sung dữ liệu chăm sóc, chỉ lưu phía backend.
 
 Nguồn kết nối [Supabase](https://supabase.com/docs/guides/database/connecting-to-postgres). Cấu hình Prisma 7 theo [tài liệu nâng cấp chính thức](https://www.prisma.io/docs/guides/upgrade-prisma-orm/v7).
 
@@ -97,7 +97,7 @@ Nguồn kết nối [Supabase](https://supabase.com/docs/guides/database/connect
 
 Mọi response có success, data, error và message. Lỗi dùng mã INVALID_INPUT (400), UNAUTHORIZED (401), NOT_FOUND (404), AUTH_UNAVAILABLE/DATABASE_UNAVAILABLE (503), INTERNAL_ERROR (500). Header X-Request-ID dùng đối chiếu log. Log chỉ ghi method, path, status, thời gian và request ID.
 
-Development bypass dùng UUID cố định trong src/config/demo.ts. Các chức năng CRUD ghi dữ liệu, upload/quét AI, thời tiết, tạo lịch tự động và gửi thông báo là phần nghiệp vụ hai bạn backend sẽ viết trên nền này.
+Development bypass dùng UUID cố định trong src/config/demo.ts. Đã có lịch/thời tiết, hộp thư nhắc và Gemini bổ sung dữ liệu chăm sóc. CRUD vườn, upload/quét ảnh, ghi nhật ký và gửi push vẫn cần tích hợp với phần của nhóm.
 
 ## Cấu trúc để chia việc
 
@@ -130,3 +130,13 @@ Khi build, mã sinh Prisma nằm trong dist/generated và được dùng bởi `
 ## API Auth cho frontend
 
 Đã có API Express đăng ký, đăng nhập, refresh, quên/đổi mật khẩu, đăng xuất và Google OAuth/PKCE. Xem [hợp đồng API và cấu hình cloud](../docs/AUTH_SETUP.md). Google, SMTP và callback cần cấu hình trước khi kiểm thử đầy đủ. Frontend giữ nguyên.
+
+## Hồ sơ, lịch chăm sóc và lịch sử thông báo
+
+Xem [hợp đồng API và phần chờ module khác](../docs/BACKEND_FEATURES_1_2_5.md). Sau khi cài dependencies và db:generate, mở terminal riêng chạy `npm run reminders:watch` để tự tạo việc và hộp thư nhắc theo lịch/thời tiết. `npm run reminders:run` chạy một lượt. Push tới điện thoại chưa tích hợp.
+
+Kiểm thử PostgreSQL an toàn trên máy: `npm run test:db:isolated`. Script tạo cluster tạm riêng rồi tự dọn, không dùng Supabase chung.
+
+## Gemini bổ sung dữ liệu chăm sóc
+
+Xem [cấu hình, API đề xuất/duyệt và cách nối với module AI](../docs/CARE_DATA_AI.md). `CARE_AI_MODE=auto` dùng demo có nhãn khi chưa có key. Thêm `GEMINI_API_KEY`, `GEMINI_MODEL`; cấp quyền duyệt bằng `CARE_REVIEWER_IDS` (UUID Auth). `npm run care:check` thử provider mà không ghi DB. Planner chỉ khởi tạo lịch từ dữ liệu loài đã duyệt; bản demo không được duyệt thành dữ liệu thật.
