@@ -21,9 +21,15 @@
     "db:up": "docker compose up -d --wait",
     "db:stop": "docker compose stop",
     "env:init": "node scripts/init-env.mjs",
-    "db:local": "node scripts/local-db.mjs"
+    "db:local": "node scripts/local-db.mjs",
+    "test:db:isolated": "node scripts/test-db-isolated.mjs",
+    "reminders:run": "tsx src/jobs/reminders.ts",
+    "reminders:start": "node dist/jobs/reminders.js",
+    "reminders:watch": "tsx src/jobs/reminders.ts --watch",
+    "care:check": "tsx src/jobs/check-care.ts"
   },
   "dependencies": {
+    "@js-temporal/polyfill": "^0.5.1",
     "@prisma/adapter-pg": "7.10.1",
     "@prisma/client": "7.10.1",
     "cors": "^2.8.5",

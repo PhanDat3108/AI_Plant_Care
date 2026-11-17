@@ -32,7 +32,14 @@ export function profileController(db: Database): {
   return {
     async get(_req, res) {
       const user = res.locals.user;
-      success(res, { ...(await service.get(user)), isDemo: user.isDemo });
+      const profile = await service.get(user);
+      success(res, {
+        ...profile,
+        email: user.email ?? null,
+        avatar_url: user.avatarUrl ?? null,
+        ...(await service.stats(user.id)),
+        isDemo: user.isDemo,
+      });
     },
     async update(req, res) {
       const user = res.locals.user;

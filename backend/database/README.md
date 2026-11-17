@@ -1,6 +1,6 @@
 # Database AI Plant Care
 
-PostgreSQL 16+ cho Flutter → Express (Node.js) → PostgreSQL. Đây là thiết kế cho bản demo Android của nhóm. Mười bảng nằm trong schema riêng `plantcare`. Mỗi chậu cây có danh tính, lịch chăm sóc và lịch sử riêng, kể cả khi nhiều chậu thuộc cùng loài.
+PostgreSQL 16+ cho Flutter → Express (Node.js) → PostgreSQL. Đây là thiết kế cho bản demo Android của nhóm. Mười hai bảng nằm trong schema riêng `plantcare`. Mỗi chậu cây có danh tính, lịch chăm sóc và lịch sử riêng, kể cả khi nhiều chậu thuộc cùng loài.
 
 ## Sơ đồ
 
@@ -10,6 +10,7 @@ erDiagram
     PROFILES ||--o{ SCANS : requests
     PLANT_SPECIES o|--o{ PLANTS : identifies
     PLANT_SPECIES ||--o{ REFERENCE_IMAGES : illustrates
+    PLANT_SPECIES ||--o| SPECIES_CARE_DRAFTS : proposes
     REFERENCE_IMAGES o|--o{ PLANTS : covers
     PLANT_SPECIES o|--o{ SCANS : predicts
     PLANTS o|--o{ SCANS : tracks
@@ -41,12 +42,14 @@ erDiagram
 
 - Database lưu object key, ví dụ owner-uuid/scan-uuid/leaf.jpg. Ảnh đặt trong bucket private. Express xác minh tài khoản sở hữu ảnh trước khi cấp URL xem ảnh có thời hạn. Khi xóa cây, quan hệ cascade xóa dữ liệu con; backend dọn object tương ứng sau commit, có thể thử lại nếu storage lỗi.
 - Schema chỉ dành cho backend. Dùng role runtime riêng với USAGE trên schema và SELECT/INSERT/UPDATE/DELETE trên bảng cần thiết. Dùng role migration để tạo bảng; không cấp quyền schema cho PUBLIC hoặc client mobile. Nếu dùng Supabase, giữ plantcare ngoài danh sách schema của Data API. Mọi truy vấn cá nhân cần lọc theo chủ đã xác minh, kể cả truy vấn bằng task_id hoặc scan_id. FK chỉ đảm bảo liên kết dữ liệu, quyền đọc/sửa do API kiểm tra.
-- Quyết định thiết kế cho MVP là **nhắc cục bộ**. Flutter đặt thông báo từ care_tasks và dùng task_id để nhận diện khi đặt lại/hủy. Nếu nhóm cam kết **push từ server tới nhiều thiết bị**, cần bổ sung bảng thiết bị (owner_id, token, platform, revoked_at) và bảng giao thông báo (task_id, device_id, planned_at, status, sent_at, unique cho mỗi lần gửi), kèm tiến trình gửi. PostgreSQL tự nó không phát thông báo Android.
+- Đã có bảng `notifications` và worker tạo hộp thư nhắc đến hạn trong backend. Xem [lịch thông minh](../../docs/BACKEND_FEATURES_1_2_5.md). **Push điện thoại vẫn chưa tích hợp**. Phương án nhắc cục bộ là lựa chọn ở Flutter: Flutter đặt thông báo từ care_tasks và dùng task_id để nhận diện khi đặt lại/hủy. Nếu nhóm cam kết **push từ server tới nhiều thiết bị**, cần bổ sung bảng thiết bị (owner_id, token, platform, revoked_at) và bảng giao thông báo (task_id, device_id, planned_at, status, sent_at, unique cho mỗi lần gửi), kèm tiến trình gửi. PostgreSQL tự nó không phát thông báo Android.
 - Xem vườn offline là mở rộng ở Flutter: cache theo người dùng trên máy, xóa cache khi đổi tài khoản. Các request viết lại dùng cùng request_id. API key của AI/thời tiết và DATABASE_URL chỉ ở backend. Không lưu key trong lịch sử quét.
 
 ## Cách áp dụng
 
-Làm theo [hướng dẫn backend](../README.md). `npm run db:migrate` áp ba migration có theo dõi trong `prisma/migrations/`; `npm run db:status` xem trạng thái. Schema ORM đã đồng bộ trong `prisma/schema.prisma`. PostgreSQL thực thi CHECK, khóa ngoại và index từ SQL migrations.
+Gemini lưu bản đề xuất trong `species_care_drafts`; dữ liệu chính nằm trong `plant_species` cùng trạng thái và thông tin duyệt. Planner chỉ khởi tạo lịch từ loài `care_status=verified`. Giá trị cũ không tự được coi là đã duyệt. Xem [hợp đồng dữ liệu chăm sóc](../../docs/CARE_DATA_AI.md).
+
+Làm theo [hướng dẫn backend](../README.md). `npm run db:migrate` áp các migration có theo dõi trong `prisma/migrations/`; `npm run db:status` xem trạng thái. Schema ORM đã đồng bộ trong `prisma/schema.prisma`. PostgreSQL thực thi CHECK, khóa ngoại và index từ SQL migrations.
 
 Bảng reference_images lưu loài, nhà cung cấp, ID ảnh của nguồn, URL ảnh/thumbnail, attribution, URL nguồn và giấy phép. plants.reference_image_id liên kết ảnh bìa tham khảo với đúng loài cây, còn plants.cover_image_key dành cho ảnh upload riêng. Một cây chọn một nguồn bìa tại một thời điểm. scans.image_key luôn giữ ảnh thực sự dùng ở lần phân tích. API đọc chi tiết cây trả metadata để Flutter ghi nguồn ảnh theo giấy phép. Nhập ảnh vào danh mục qua backend sau khi xác minh nguồn và quyền sử dụng.
 
