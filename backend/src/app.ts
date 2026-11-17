@@ -1,4 +1,4 @@
-import { authCallback } from "./routes/auth-callback.js";
+import { authCallback } from "./controllers/auth-callback.js";
 import { randomUUID } from "node:crypto";
 import express from "express";
 import cors from "cors";

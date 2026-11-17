@@ -1,18 +1,5 @@
-import { randomUUID } from "node:crypto";
-import type { RequestHandler } from "express";
-
-// Local backend diagnostic page, not a frontend application or a session store.
-export const authCallback: RequestHandler = (_req, res) => {
-  const nonce = randomUUID();
-  res.setHeader("Cache-Control", "no-store");
-  res.setHeader("Referrer-Policy", "no-referrer");
-  res.setHeader("X-Content-Type-Options", "nosniff");
-  res.setHeader(
-    "Content-Security-Policy",
-    `default-src 'none'; script-src 'nonce-${nonce}'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'`,
-  );
-  res.type("html")
-    .send(`<!doctype html><html lang="vi"><meta charset="utf-8"><title>Kiểm thử Auth backend</title>
+export function renderAuthCallback(nonce: string) {
+  return `<!doctype html><html lang="vi"><meta charset="utf-8"><title>Kiểm thử Auth backend</title>
 <h1>Kiểm thử Auth backend</h1><p id="status">Đang đọc callback…</p>
 <button id="google" type="button" hidden>Thử đăng nhập Google</button><p id="instructions"></p><button id="copy" hidden>Sao chép thông tin phiên để test Postman</button>
 <section id="recovery" hidden>
@@ -106,5 +93,5 @@ export const authCallback: RequestHandler = (_req, res) => {
  copy.hidden = false;
  copy.onclick = async () => { try { await navigator.clipboard.writeText(JSON.stringify(payload));copy.textContent='Đã sao chép. Không gửi nội dung này vào chat.'; } catch {copy.textContent='Trình duyệt chưa cho phép sao chép.';} };
 })();
-</script></html>`);
-};
+</script></html>`;
+}

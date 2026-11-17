@@ -27,27 +27,19 @@ const profileUpdate = z
 export function profileController(db: Database): {
   get: RequestHandler;
   update: RequestHandler;
+  stats: RequestHandler;
 } {
   const service = profileService(db);
   return {
+    async stats(_req, res) {
+      success(res, await service.stats(res.locals.user.id));
+    },
     async get(_req, res) {
-      const user = res.locals.user;
-      const profile = await service.get(user);
-      success(res, {
-        ...profile,
-        email: user.email ?? null,
-        avatar_url: user.avatarUrl ?? null,
-        ...(await service.stats(user.id)),
-        isDemo: user.isDemo,
-      });
+      success(res, await service.get(res.locals.user));
     },
     async update(req, res) {
-      const user = res.locals.user;
       const changes = profileUpdate.parse(req.body);
-      success(res, {
-        ...(await service.update(user, changes)),
-        isDemo: user.isDemo,
-      });
+      success(res, await service.update(res.locals.user, changes));
     },
   };
 }
