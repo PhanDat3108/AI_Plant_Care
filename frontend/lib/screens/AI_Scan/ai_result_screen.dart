@@ -96,7 +96,7 @@ class _AiResultScreenState extends State<AiResultScreen> {
                     child: Icon(
                       Icons.park_rounded,
                       size: 100,
-                      color: isSick ? AppTheme.sickBadgeText.withOpacity(0.5) : AppTheme.primaryColor.withOpacity(0.5),
+                      color: isSick ? AppTheme.sickBadgeText.withValues(alpha: 0.5) : AppTheme.primaryColor.withValues(alpha: 0.5),
                     ),
                   ),
                 ),

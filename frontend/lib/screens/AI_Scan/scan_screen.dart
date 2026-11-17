@@ -100,7 +100,7 @@ class _ScanScreenState extends State<ScanScreen> {
           if (_isAnalyzing)
             Positioned.fill(
               child: Container(
-                color: Colors.black.withOpacity(0.7),
+                color: Colors.black.withValues(alpha: 0.7),
                 child: const Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -151,7 +151,7 @@ class _ScanScreenState extends State<ScanScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
+          SizedBox(
             width: 280,
             height: 280,
             child: Stack(
@@ -170,7 +170,7 @@ class _ScanScreenState extends State<ScanScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withOpacity(0.85),
+                color: AppTheme.primaryColor.withValues(alpha: 0.85),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: const Text(
@@ -219,7 +219,7 @@ class _ScanScreenState extends State<ScanScreen> {
             height: 48,
             padding: const EdgeInsets.all(3),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.9),
+              color: Colors.white.withValues(alpha: 0.9),
               borderRadius: BorderRadius.circular(24),
             ),
             child: Row(
@@ -277,7 +277,7 @@ class _ScanScreenState extends State<ScanScreen> {
           Container(
             margin: const EdgeInsets.only(bottom: 24),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.8),
+              color: Colors.white.withValues(alpha: 0.8),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
@@ -368,7 +368,7 @@ class _ScanScreenState extends State<ScanScreen> {
         width: 48,
         height: 48,
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.9),
+          color: Colors.white.withValues(alpha: 0.9),
           shape: BoxShape.circle,
         ),
         child: Icon(icon, color: AppTheme.primaryColor, size: 22),
