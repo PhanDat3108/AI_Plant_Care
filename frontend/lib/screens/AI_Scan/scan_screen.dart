@@ -154,10 +154,6 @@ class _ScanScreenState extends State<ScanScreen> {
           Container(
             width: 280,
             height: 280,
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.white.withOpacity(0.8), width: 2),
-              borderRadius: BorderRadius.circular(24),
-            ),
             child: Stack(
               children: [
                 Positioned(top: 0, left: 0, child: _buildCorner(isTop: true, isLeft: true)),
@@ -221,7 +217,7 @@ class _ScanScreenState extends State<ScanScreen> {
           ),
           Container(
             height: 48,
-            padding: const EdgeInsets.all(4),
+            padding: const EdgeInsets.all(3),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.9),
               borderRadius: BorderRadius.circular(24),
@@ -241,11 +237,7 @@ class _ScanScreenState extends State<ScanScreen> {
                 icon: _isFlashOn ? Icons.flash_on_rounded : Icons.flash_off_rounded,
                 onTap: _toggleFlash,
               ),
-              const SizedBox(width: 8),
-              _buildCircleButton(
-                icon: Icons.cameraswitch_rounded,
-                onTap: () {}, // Switch camera mock
-              ),
+      
             ],
           ),
         ],
@@ -360,7 +352,7 @@ class _ScanScreenState extends State<ScanScreen> {
                   ),
                 ),
               ),
-              const SizedBox(width: 56), // Spacer cân bằng
+              const SizedBox(width: 56), 
             ],
           ),
         ],
