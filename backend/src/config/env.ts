@@ -25,11 +25,31 @@ export function readConfig(input: NodeJS.ProcessEnv) {
         .optional(),
       SUPABASE_PUBLISHABLE_KEY: z.string().optional(),
       AUTH_REDIRECT_URL: z.union([z.url(), z.literal("")]).optional(),
+      CARE_AI_MODE: z.enum(["auto", "demo", "live"]).default("auto"),
+      GEMINI_API_KEY: z.string().trim().default(""),
+      GEMINI_MODEL: z
+        .string()
+        .regex(/^[a-zA-Z0-9._-]{1,100}$/)
+        .default("gemini-3.5-flash-lite"),
+      CARE_REVIEWER_IDS: z
+        .string()
+        .default("")
+        .transform((value) =>
+          z.array(z.uuid()).parse(
+            value
+              .split(",")
+              .map((id) => id.trim())
+              .filter(Boolean),
+          ),
+        ),
     })
     .parse(input);
 
   if (config.DEV_AUTH_BYPASS && config.NODE_ENV !== "development") {
     throw new Error("DEV_AUTH_BYPASS chỉ được bật trong development.");
+  }
+  if (config.CARE_AI_MODE === "live" && !config.GEMINI_API_KEY) {
+    throw new Error("CARE_AI_MODE=live cần GEMINI_API_KEY.");
   }
   if (
     ["production", "staging"].includes(config.NODE_ENV) &&
