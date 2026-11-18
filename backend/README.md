@@ -143,4 +143,4 @@ Kiểm thử PostgreSQL an toàn trên máy: `npm run test:db:isolated`. Script 
 
 ## Gemini bổ sung dữ liệu chăm sóc
 
-Xem [cấu hình, API đề xuất/duyệt và cách nối với module AI](../docs/CARE_DATA_AI.md). `CARE_AI_MODE=auto` dùng demo có nhãn khi chưa có key. Thêm `GEMINI_API_KEY`, `GEMINI_MODEL`; cấp quyền duyệt bằng `CARE_REVIEWER_IDS` (UUID Auth). `npm run care:check` thử provider mà không ghi DB. Planner chỉ khởi tạo lịch từ dữ liệu loài đã duyệt; bản demo không được duyệt thành dữ liệu thật.
+Xem [cấu hình, API đề xuất/duyệt và cách nối với module AI](../docs/CARE_DATA_AI.md). `CARE_AI_MODE=auto` dùng demo có nhãn khi chưa có key. Thêm `GEMINI_API_KEY`, `GEMINI_MODEL`; cấp quyền duyệt bằng `CARE_REVIEWER_IDS` (UUID Auth). `npm run care:check` thử provider mà không ghi DB. Gemini thật được lưu vào dữ liệu loài và dùng lập lịch ngay với trạng thái ai_suggested; không cần màn hình duyệt. Chu kỳ null không được tự suy đoán; demo không dùng làm lịch thật. Áp migration 202611180001_auto_ai_care trước khi chạy bản mới.

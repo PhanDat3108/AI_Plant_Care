@@ -101,7 +101,7 @@ model plant_species {
   @@schema("plantcare")
 }
 
-/// One cached proposal per species. Canonical fields are updated only by review.
+/// One cached proposal per species. Real AI output is published automatically; human review is optional.
 model species_care_drafts {
   species_id        String        @id @db.Uuid
   generation_id     String        @unique @db.Uuid

@@ -48,7 +48,7 @@ Open-Meteo không cần API key cho bản giáo dục/phi thương mại này; k
 Module AI/vườn cây lưu các trường hiện đã có trong DB:
 
 - `plants.owner_id`: UUID Auth, `species_id`: loài đã xác định hoặc null.
-- `plant_species.watering_days`, `fertilizing_days`: chu kỳ nguyên 1–365 ngày từ nguồn chăm sóc đã thống nhất; ghi `care_source`. Không biến phần trăm confidence thành chu kỳ. Planner chỉ dùng loài `care_status=verified` để khởi tạo lịch. Gemini tạo đề xuất riêng, xem [API bổ sung và duyệt dữ liệu](CARE_DATA_AI.md).
+- `plant_species.watering_days`, `fertilizing_days`: chu kỳ nguyên 1–365 ngày từ nguồn chăm sóc đã thống nhất; ghi `care_source`. Không biến phần trăm confidence thành chu kỳ. Planner dùng loài `care_status=ai_suggested` hoặc `verified` để khởi tạo lịch; kết quả AI thật được lưu ngay, không cần duyệt. Gemini tạo đề xuất riêng, xem [API bổ sung và duyệt dữ liệu](CARE_DATA_AI.md).
 - `plants.environment`: indoor/outdoor/unknown. `latitude`, `longitude`: cặp tọa độ hợp lệ hoặc cả hai null.
 - `profiles.timezone`: múi giờ IANA, mặc định Asia/Ho_Chi_Minh.
 
@@ -58,7 +58,7 @@ Quy ước module 6: đánh dấu done và tạo care_log có task_id/plant_id/k
 
 ## Chính sách lịch và thời tiết (MVP v1)
 
-- Khởi tạo 2 lịch water/fertilize nếu loài đã duyệt có chu kỳ tương ứng. Giờ mặc định 08:00 theo timezone hồ sơ. Loài chưa duyệt trả `CARE_DATA_REVIEW_REQUIRED`; loài đã duyệt nhưng thiếu chu kỳ thì bỏ qua loại việc đó và trả cảnh báo. Lịch thủ công đã tồn tại vẫn được giữ.
+- Khởi tạo 2 lịch water/fertilize nếu loài có trạng thái ai_suggested/verified và có chu kỳ tương ứng. Giờ mặc định 08:00 theo timezone hồ sơ. Loài còn missing/draft trả `CARE_DATA_REVIEW_REQUIRED` (giữ mã tương thích, không bắt buộc có màn hình duyệt); loài dùng được nhưng thiếu chu kỳ thì bỏ qua loại việc đó và trả cảnh báo. Lịch thủ công đã tồn tại vẫn được giữ.
 - Chu kỳ nền tính từ ngày bắt đầu lịch, hoặc lần chăm sóc cùng loại mới nhất nếu muộn hơn. Mỗi lịch giữ một việc pending. Chưa hoàn thành thì giữ việc quá hạn, không tự đánh dấu đã tưới và không tạo vô hạn việc trùng.
 - Lịch đã chỉnh tay được giữ nguyên; sync không ghi đè chu kỳ/giờ/enabled bằng dữ liệu loài. Khi đổi loài, nhóm cần quyết định có reset lịch hay không; hiện vẫn giữ lịch đã tồn tại.
 - PUT thay đổi quy tắc sẽ đặt starts_at mới, bỏ qua các việc pending cũ, giữ việc done/nhật ký. Lượt sync tiếp theo tính lại. PUT cùng dữ liệu không reset chu kỳ. Bật lại cùng ngày khôi phục đúng occurrence nếu nó bị skipped do sửa lịch.

@@ -1,6 +1,12 @@
 # Bổ sung dữ liệu chăm sóc bằng Gemini
 
-Backend đọc định danh trong `plant_species`, gọi Gemini lấy **bản đề xuất**, kiểm tra JSON bằng Zod và lưu riêng trong `species_care_drafts`. Người được cấp quyền kiểm tra/duyệt mới chuyển dữ liệu sang các cột chăm sóc chính. Planner chỉ khởi tạo lịch tự động từ loài có `care_status=verified`. Không thay đổi frontend.
+Backend đọc định danh trong `plant_species`, gọi Gemini, kiểm tra JSON bằng Zod rồi lưu đồng thời vào `species_care_drafts` và các cột chăm sóc chính. **Từ 18/11/2026, kết quả Gemini thật được dùng ngay, không chờ duyệt thủ công.** Trạng thái `ai_suggested` phân biệt với `verified` (đã được người kiểm tra); không tạo người duyệt hoặc thời điểm duyệt giả. Demo vẫn chỉ lưu bản mô phỏng.
+
+API lịch, nhiệm vụ, hồ sơ và thông báo giữ nguyên URL/body/response để frontend tiếp tục dùng hai tài liệu đã bàn giao. Không cần màn hình phê duyệt. API care-data thêm giá trị trạng thái `ai_suggested`; nếu một client khác đã lọc riêng `verified` thì client đó phải chấp nhận thêm trạng thái mới. Các trường hướng dẫn trong `species` được trả ngay. Không tự bịa chu kỳ khi AI trả null.
+
+Chạy migration `202611180001_auto_ai_care` trước khi chạy code mới (`npm run db:migrate` từ backend). Migration chỉ mở rộng CHECK trạng thái, không sửa dữ liệu cũ. Bản draft thật cũ sẽ được đưa vào dữ liệu chính khi gọi enrich lại; bản rejected/demo không tự được đưa vào. Dữ liệu đã được người duyệt giữ nguyên khi tạo lại, vẫn có thể cập nhật qua API review tùy chọn.
+
+Module quét cây cần lưu species_id rồi gọi `careDataService.enrichForPlant(ownerId, plantId)` (hoặc API enrich đã có). Sau đó gọi sync hoặc đợi worker tạo lịch. Việc thêm một dòng DB tự nó không gọi Gemini. Backend quét ảnh chưa có trong phạm vi module này.
 
 ## Cấu hình
 
@@ -61,7 +67,7 @@ Gemini nhận tên khoa học, tên thường gọi từ DB và các đoạn tà
 }
 ```
 
-Ví dụ trên chỉ minh họa hợp đồng, không phải hướng dẫn thực vật học. Chu kỳ là số nguyên 1–365 hoặc null; không dùng 0 để diễn tả không cần bón. Có chu kỳ thì phải có hướng dẫn tương ứng. Chặn JSON sai, trường thừa, sai tên loài, source ID không được cung cấp, phản hồi bị cắt hoặc bị chặn. Kiểm tra cấu trúc không chứng minh nội dung thực vật học đúng; người duyệt phải kiểm tra điều kiện áp dụng trước khi chọn chu kỳ.
+Ví dụ trên chỉ minh họa hợp đồng, không phải hướng dẫn thực vật học. Chu kỳ là số nguyên 1–365 hoặc null; không dùng 0 để diễn tả không cần bón. Có chu kỳ thì phải có hướng dẫn tương ứng. Chặn JSON sai, trường thừa, sai tên loài, source ID không được cung cấp, phản hồi bị cắt hoặc bị chặn. Kiểm tra cấu trúc không chứng minh nội dung thực vật học đúng; dữ liệu AI dùng ngay là dữ liệu tham khảo, chưa được người kiểm tra.
 
 ## API
 
@@ -100,7 +106,7 @@ Tối đa 5 đoạn, 6000 ký tự/đoạn. **URL chỉ là thông tin nguồn, 
 
 Không có nguồn → `source_mode=model_knowledge`, là đề xuất từ kiến thức mô hình. **Adapter chưa dùng tìm kiếm web/Google Search grounding**, không giả vờ đã tìm nguồn. Grounding có điều khoản lưu/tái sử dụng riêng và không được mặc định dùng để gom dữ liệu vào danh mục dùng chung.
 
-### Duyệt hoặc từ chối
+### Duyệt hoặc từ chối (tùy chọn, không chặn luồng tự động)
 
 Lấy `generation_id` từ GET rồi gửi:
 
@@ -122,8 +128,8 @@ Sau duyệt, `plant_species` có `care_status=verified`, `care_model`, `care_gen
 
 1. Module Pl@ntNet chuẩn hóa tên khoa học, tìm/tạo loài và gắn `plants.species_id`. Không ghi các chu kỳ Gemini trực tiếp vào bảng chính. Nhận diện chưa chắc chắn thì cho xác nhận loài trước.
 2. Sau khi transaction lưu cây đã commit, gọi endpoint enrich hoặc `careDataService(db, createCareProvider(config)).enrichForPlant(ownerId, plantId)`. Không gọi trong transaction đang giữ khóa DB. Có thể gọi thành request riêng sau khi lưu cây để không giữ request quét chờ Gemini.
-3. Chờ reviewer duyệt nếu đây là loài mới. Nhiều cây cùng loài dùng chung bản đã duyệt.
-4. Worker `npm run reminders:watch` sẽ tạo lịch còn thiếu ở lượt tiếp theo; hoặc chủ cây gọi `POST /plants/:id/care-plan/sync` body `{}` ngay sau duyệt.
+3. Kết quả AI thật được lưu ngay thành `ai_suggested`. Nhiều cây cùng loài dùng chung dữ liệu, không chờ reviewer.
+4. Worker `npm run reminders:watch` sẽ tạo lịch còn thiếu ở lượt tiếp theo; hoặc chủ cây gọi `POST /plants/:id/care-plan/sync` body `{}` ngay sau enrich.
 5. Lịch đã tồn tại, kể cả người dùng chỉnh tay, giữ nguyên. Duyệt dữ liệu loài mới không tự ghi đè lịch của các chậu cũ. Endpoint PUT lịch vẫn cho chủ cây tự thiết lập khi chưa có dữ liệu loài đã duyệt.
 
 Các ngưỡng thời tiết và cách tính ngày hiện có không đổi. Worker nhắc chăm sóc **không gọi Gemini**, không tìm thông tin mới mỗi phút. Chỉ tạo đề xuất theo yêu cầu enrich. Module lưu cây/quét của bạn khác chưa được tự nối vào vì chưa có thao tác tạo cây/quét trong backend hiện tại.
@@ -148,7 +154,7 @@ npm run lint
 npm run build
 ```
 
-Các test DB chỉ chạy trên PostgreSQL tạm: phân quyền, cache cùng loài, lease, phản hồi cũ, sửa/duyệt/từ chối, chống duyệt demo, bảo toàn dữ liệu đã duyệt và planner chỉ dùng chu kỳ đã duyệt. Auth/Gemini/thời tiết được giả lập trong bộ test; `care:check` kiểm tra provider thật riêng khi có key.
+Các test DB chỉ chạy trên PostgreSQL tạm: phân quyền, cache cùng loài, lease, phản hồi cũ, sửa/duyệt/từ chối, chống duyệt demo, bảo toàn dữ liệu đã duyệt và planner dùng chu kỳ `ai_suggested` hoặc `verified`, không dùng demo. Auth/Gemini/thời tiết được giả lập trong bộ test; `care:check` kiểm tra provider thật riêng khi có key.
 
 Đã kiểm tra thật ngày 17/11/2026 với `gemini-3.5-flash-lite`: nhận JSON hợp lệ cho `Epipremnum aureum`, đủ 5 hướng dẫn dạng chữ, hai chu kỳ null khi thiếu căn cứ. Không ghi kết quả thử vào Supabase và không coi nội dung đó là đã được kiểm tra thực vật học. Migration mới đã áp trên Supabase của nhóm; `CARE_REVIEWER_IDS` vẫn cần người quản lý điền UUID tài khoản của mình.
 

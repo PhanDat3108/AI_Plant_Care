@@ -88,15 +88,15 @@ afterAll(async () => {
   await db.plant_species.deleteMany({ where: { id: { in: speciesIds } } });
   await db.$disconnect();
 });
-it("stores a shared proposal once, blocks planner until review, then initializes schedules", async () => {
+it("publishes real AI data once and initializes schedules without human review", async () => {
   const { id, plant } = await fixture();
   const p = provider();
   const service = careDataService(db, p, () => now);
   const first = await service.enrichForPlant(owner, plant.id);
   expect(first.cached).toBe(false);
   expect(first.species).toMatchObject({
-    care_status: "draft",
-    watering_days: null,
+    care_status: "ai_suggested",
+    watering_days: 7,
   });
   expect(first.draft?.data).toMatchObject({ care: { watering_days: 7 } });
   const another = await db.plants.create({
@@ -106,8 +106,9 @@ it("stores a shared proposal once, blocks planner until review, then initializes
   expect(p.generate).toHaveBeenCalledTimes(1);
   const planner = carePlanner(db, { forecast: async () => null }, () => now);
   const pending = await planner.sync(owner, plant.id);
-  expect(pending.tasks).toHaveLength(0);
-  expect(pending.warnings).toContain("CARE_DATA_REVIEW_REQUIRED");
+  expect(pending.tasks).toHaveLength(2);
+  expect(pending.warnings).not.toContain("CARE_DATA_REVIEW_REQUIRED");
+  expect(first.species.care_reviewed_at).toBeNull();
   const approved = await service.review(id, reviewer, {
     action: "approve",
     generation_id: first.draft!.generation_id,
@@ -337,7 +338,7 @@ it("review may edit proposed values, reject refreshes, and preserves existing ma
     enabled: true,
   });
   const planner = carePlanner(db, { forecast: async () => null });
-  expect((await planner.sync(owner, plant.id)).tasks).toHaveLength(1);
+  expect((await planner.sync(owner, plant.id)).tasks).toHaveLength(2);
   const base = proposal({
     scientific_name: "Care fixture " + id,
     common_name: null,
@@ -373,7 +374,7 @@ it("review may edit proposed values, reject refreshes, and preserves existing ma
   expect((await service.read(id)).species.watering_days).toBe(10);
   expect((await service.read(id)).draft?.status).toBe("rejected");
 });
-it("verified nullable intervals stay missing instead of inventing a schedule", async () => {
+it("automatically published nullable intervals stay missing instead of inventing a schedule", async () => {
   const { id, plant } = await fixture();
   const p = provider(
     vi.fn(async (identity: CareIdentity) => ({
@@ -386,12 +387,8 @@ it("verified nullable intervals stay missing instead of inventing a schedule", a
     })),
   );
   const service = careDataService(db, p);
-  const draft = await service.generate(id);
-  await service.review(id, reviewer, {
-    action: "approve",
-    generation_id: draft.draft!.generation_id,
-    note: "Guides only",
-  });
+  const resultAI = await service.generate(id);
+  expect(resultAI.species.care_status).toBe("ai_suggested");
   const result = await carePlanner(db, { forecast: async () => null }).sync(
     owner,
     plant.id,
@@ -459,4 +456,80 @@ it("HTTP reviewer can approve a real proposal and the planner consumes approved 
     .send({})
     .expect(200);
   expect(tasks.body.data.tasks).toHaveLength(2);
+});
+
+it("promotes a cached legacy real draft without another AI call", async () => {
+  const { id, plant } = await fixture();
+  const p = provider();
+  const service = careDataService(db, p, () => now);
+  await service.generate(id);
+  await db.plant_species.update({
+    where: { id },
+    data: {
+      care_status: "draft",
+      watering_days: null,
+      fertilizing_days: null,
+    },
+  });
+  const cached = await service.enrichForPlant(owner, plant.id);
+  expect(cached.cached).toBe(true);
+  expect(cached.species).toMatchObject({
+    care_status: "ai_suggested",
+    watering_days: 7,
+  });
+  expect(p.generate).toHaveBeenCalledTimes(1);
+});
+
+it("demo regeneration cannot overwrite published AI care; provider errors preserve it", async () => {
+  const { id, plant } = await fixture();
+  const service = careDataService(db, provider(), () => now);
+  await service.generate(id);
+  const demo = careDataService(db, createCareProvider(config), () => now);
+  await demo.generate(id, { force: true });
+  const row = await service.read(id);
+  expect(row.species).toMatchObject({
+    care_status: "ai_suggested",
+    watering_days: 7,
+  });
+  expect(row.draft?.is_mock).toBe(true);
+  const failing = careDataService(
+    db,
+    provider(
+      vi.fn(async () => {
+        throw new HttpError(503, "AI_UNAVAILABLE", "test");
+      }),
+    ),
+    () => now,
+  );
+  await expect(failing.generate(id, { force: true })).rejects.toMatchObject({
+    status: 503,
+  });
+  expect((await service.read(id)).species.water_guide).toBe(
+    row.species.water_guide,
+  );
+  expect(
+    (
+      await carePlanner(db, { forecast: async () => null }, () => now).sync(
+        owner,
+        plant.id,
+      )
+    ).tasks,
+  ).toHaveLength(2);
+});
+
+it("demo on a new species never creates real automatic schedules", async () => {
+  const { id, plant } = await fixture();
+  const result = await careDataService(
+    db,
+    createCareProvider(config),
+    () => now,
+  ).generate(id);
+  expect(result.species.watering_days).toBeNull();
+  expect(result.species.care_status).toBe("draft");
+  const planned = await carePlanner(
+    db,
+    { forecast: async () => null },
+    () => now,
+  ).sync(owner, plant.id);
+  expect(planned.tasks).toHaveLength(0);
 });
