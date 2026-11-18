@@ -6,7 +6,7 @@ import 'my_garden_screen.dart';
 import 'tasks/tasks_screen.dart';
 import 'notifications/notification_screen.dart';
 import 'profile_screen.dart';
-import 'AI_Scan/scan_screen.dart';
+import 'ai_scan/scan_screen.dart';
 
 class NavigationBottomBar extends StatefulWidget {
   const NavigationBottomBar({super.key});
