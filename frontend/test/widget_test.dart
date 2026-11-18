@@ -1,30 +1,57 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
 import 'package:ai_plant_care/main.dart';
+import 'package:ai_plant_care/screens/my_garden_screen.dart';
+import 'package:ai_plant_care/screens/tasks_screen.dart';
+import 'package:ai_plant_care/screens/notification_screen.dart';
+import 'package:ai_plant_care/screens/profile_screen.dart';
+import 'package:ai_plant_care/screens/scan_screen.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
+  testWidgets('Starts in garden and switches between all navigation tabs', (
+    tester,
+  ) async {
     await tester.pumpWidget(const MyApp());
+    expect(find.byType(MyGardenScreen), findsOneWidget);
+    expect(find.byType(ProfileScreen), findsNothing);
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    await tester.tap(find.text('Nhiệm vụ'));
+    await tester.pumpAndSettle();
+    expect(find.byType(TasksScreen), findsOneWidget);
+    expect(find.byType(MyGardenScreen), findsNothing);
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    await tester.tap(find.text('Thông báo'));
+    await tester.pumpAndSettle();
+    expect(find.byType(NotificationScreen), findsOneWidget);
+    expect(find.byType(TasksScreen), findsNothing);
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    await tester.tap(find.text('Hồ sơ'));
+    await tester.pumpAndSettle();
+    expect(find.byType(ProfileScreen), findsOneWidget);
+    expect(find.byType(NotificationScreen), findsNothing);
+
+    await tester.tap(find.text('Vườn cây'));
+    await tester.pumpAndSettle();
+    expect(find.byType(MyGardenScreen), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Opens scan and returns to the previously selected tab', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const MyApp());
+    await tester.tap(find.text('Hồ sơ'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(FloatingActionButton));
+    await tester.pumpAndSettle();
+    expect(find.byType(ScanScreen), findsOneWidget);
+    expect(find.byType(ProfileScreen), findsNothing);
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.byType(ScanScreen), findsNothing);
+    expect(find.byType(ProfileScreen), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }

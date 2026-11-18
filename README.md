@@ -21,3 +21,7 @@ flutter run
 | `backend/src/middlewares/` | Xử lý chung giữa các request |
 | `backend/src/config/` | Đọc cấu hình ứng dụng |
 | `backend/tests/` | Viết kiểm thử backend |
+
+## Kiểm tra tự động
+
+Workflow **Flutter CI** chạy analyze và test khi push/PR. Xem [hướng dẫn CI](docs/CI.md). Thành viên cập nhật workflow qua nhánh main sau khi PR được merge.
