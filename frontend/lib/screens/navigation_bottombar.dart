@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 
 import 'my_garden_screen.dart';
-import 'tasks_screen.dart';
-import 'notification_screen.dart';
+import 'tasks/tasks_screen.dart';
+import 'notifications/notification_screen.dart';
 import 'profile_screen.dart';
-import 'scan_screen.dart';
+import 'ai_scan/scan_screen.dart';
 
 class NavigationBottomBar extends StatefulWidget {
   const NavigationBottomBar({super.key});
@@ -17,13 +17,26 @@ class NavigationBottomBar extends StatefulWidget {
 
 class _NavigationBottomBarState extends State<NavigationBottomBar> {
   int _selectedIndex = 0;
+  bool _hasUnreadNotification = false;
 
-  final List<Widget> _screens = const [
-    MyGardenScreen(),
-    TasksScreen(),
-    NotificationScreen(),
-    ProfileScreen(),
-  ];
+  late final List<Widget> _screens;
+
+  @override
+  void initState() {
+    super.initState();
+    _screens = [
+      const MyGardenScreen(),
+      const TasksScreen(),
+      NotificationScreen(
+        onUnreadChanged: (hasUnread) {
+          setState(() {
+            _hasUnreadNotification = hasUnread;
+          });
+        },
+      ),
+      const ProfileScreen(),
+    ];
+  }
 
   void _onItemTapped(int index) {
     setState(() {
@@ -79,12 +92,12 @@ class _NavigationBottomBarState extends State<NavigationBottomBar> {
                 label: 'Nhiệm vụ',
                 index: 1,
               ),
-              const SizedBox(width: 48), 
+              const SizedBox(width: 48),
               _navItem(
                 icon: Icons.notifications_none_rounded,
                 label: 'Thông báo',
                 index: 2,
-                hasBadge: true,
+                hasBadge: _hasUnreadNotification,
               ),
               _navItem(
                 icon: Icons.person_outline_rounded,
@@ -104,14 +117,13 @@ class _NavigationBottomBarState extends State<NavigationBottomBar> {
     required String label,
     required int index,
     bool hasBadge = false,
-  }) 
-  {
+  }) {
     final isSelected = _selectedIndex == index;
     final color = isSelected ? AppTheme.primaryColor : AppTheme.subTextColor;
 
     Widget iconWidget = Icon(icon, color: color, size: 26);
 
-    // Thêm chấm đỏ Badge giả lập cho tab Thông báo
+    // Thêm chấm đỏ Badge cho tab Thông báo khi có thông báo chưa đọc
     if (hasBadge) {
       iconWidget = Badge(
         backgroundColor: AppTheme.sickBadgeText,
