@@ -79,7 +79,7 @@ class ToggleReminderCard extends StatelessWidget {
                 ],
               ),
             ),
-            Switch(value: value, onChanged: onChanged, activeColor: AppTheme.primaryColor),
+            Switch(value: value, onChanged: onChanged, activeThumbColor: AppTheme.primaryColor),
           ],
         ),
       ),
