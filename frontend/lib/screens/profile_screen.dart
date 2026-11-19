@@ -1,24 +1,124 @@
 import 'package:flutter/material.dart';
-import '../models/mock_data.dart';
+
+import '../core/api_exception.dart';
 import '../models/user_model.dart';
+import '../services/auth_service.dart';
+import '../services/profile_service.dart';
+import '../services/token_storage.dart';
 import '../theme/app_theme.dart';
 import '../theme/theme_controller.dart';
 import '../widgets/header_sheet_scaffold.dart';
 import '../widgets/stat_card.dart';
+import 'login_screen.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
-  // TODO: thay bằng dữ liệu từ GET /me khi nối backend.
-  UserModel get _user => mockUser;
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  UserModel? _user;
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load(showSpinner: false); // _loading đã là true từ đầu
+  }
+
+  /// GET /me. [showSpinner] = false khi kéo để làm mới (giữ nguyên nội dung cũ).
+  Future<void> _load({bool showSpinner = true}) async {
+    if (showSpinner) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
+    try {
+      final user = await ProfileService.getMe();
+      if (!mounted) return;
+      setState(() {
+        _user = user;
+        _loading = false;
+        _error = null;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      if (e.statusCode == 401) {
+        // Đã thử làm mới token mà vẫn 401: yêu cầu đăng nhập lại.
+        await TokenStorage.clear();
+        if (!mounted) return;
+        _goToLogin();
+        return;
+      }
+      if (_user != null) {
+        // Đang có dữ liệu cũ: giữ nguyên, chỉ báo lỗi nhỏ.
+        setState(() => _loading = false);
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text(e.message)));
+      } else {
+        setState(() {
+          _loading = false;
+          _error = e.message;
+        });
+      }
+    }
+  }
+
+  void _goToLogin() {
+    Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (route) => false,
+    );
+  }
+
+  Future<void> _editProfile() async {
+    final user = _user;
+    if (user == null) return;
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (_) => _EditProfileDialog(user: user),
+    );
+    if (saved == true && mounted) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(const SnackBar(content: Text('Đã cập nhật hồ sơ.')));
+      await _load(showSpinner: false); // PATCH xong thì gọi lại GET /me
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    return HeaderSheetScaffold(
+      header: _ProfileHeader(user: _user),
+      body: _buildBody(),
+    );
+  }
+
+  Widget _buildBody() {
     final user = _user;
 
-    return HeaderSheetScaffold(
-      header: _ProfileHeader(user: user),
-      body: ListView(
+    if (user == null) {
+      if (_loading) {
+        return const Center(
+          child: CircularProgressIndicator(color: AppTheme.primaryColor),
+        );
+      }
+      return _ErrorState(
+        message: _error ?? 'Không tải được hồ sơ.',
+        onRetry: _load,
+      );
+    }
+
+    return RefreshIndicator(
+      color: AppTheme.primaryColor,
+      onRefresh: () => _load(showSpinner: false),
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
         children: [
           Row(
@@ -42,7 +142,7 @@ class ProfileScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          const _SettingsCard(),
+          _SettingsCard(onEditProfile: _editProfile),
         ],
       ),
     );
@@ -52,10 +152,15 @@ class ProfileScreen extends StatelessWidget {
 class _ProfileHeader extends StatelessWidget {
   const _ProfileHeader({required this.user});
 
-  final UserModel user;
+  /// null khi đang tải lần đầu.
+  final UserModel? user;
 
   @override
   Widget build(BuildContext context) {
+    final name = (user == null)
+        ? ''
+        : (user!.fullName.isNotEmpty ? user!.fullName : user!.email);
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 22),
       child: Column(
@@ -72,10 +177,10 @@ class _ProfileHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
-          _UserAvatar(avatarUrl: user.avatarUrl),
+          _UserAvatar(avatarUrl: user?.avatarUrl),
           const SizedBox(height: 12),
           Text(
-            user.fullName,
+            name.isEmpty ? ' ' : name,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
@@ -86,7 +191,7 @@ class _ProfileHeader extends StatelessWidget {
           ),
           const SizedBox(height: 2),
           Text(
-            user.email,
+            user?.email ?? ' ',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
@@ -125,7 +230,7 @@ class _UserAvatar extends StatelessWidget {
             width: _size,
             height: _size,
             fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => defaultAvatar,
+            errorBuilder: (_, _, _) => defaultAvatar,
           );
 
     return Container(
@@ -143,8 +248,56 @@ class _UserAvatar extends StatelessWidget {
   }
 }
 
+class _ErrorState extends StatelessWidget {
+  const _ErrorState({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.cloud_off_rounded,
+              size: 56,
+              color: AppTheme.subTextColor,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AppTheme.subTextColor,
+                fontSize: 15,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Thử lại'),
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(160, 48),
+                shape: const StadiumBorder(),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _SettingsCard extends StatelessWidget {
-  const _SettingsCard();
+  const _SettingsCard({required this.onEditProfile});
+
+  final VoidCallback onEditProfile;
 
   static const TextStyle _tileTitleStyle = TextStyle(
     color: AppTheme.titleTextColor,
@@ -166,6 +319,21 @@ class _SettingsCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
+          // Chỉnh sửa hồ sơ (PATCH /me)
+          ListTile(
+            leading: const Icon(
+              Icons.edit_outlined,
+              color: AppTheme.subTextColor,
+            ),
+            title: const Text('Chỉnh sửa hồ sơ', style: _tileTitleStyle),
+            trailing: const Icon(
+              Icons.chevron_right_rounded,
+              color: AppTheme.subTextColor,
+            ),
+            onTap: onEditProfile,
+          ),
+          divider,
+
           // Chế độ Tối
           ValueListenableBuilder<ThemeMode>(
             valueListenable: ThemeController.themeMode,
@@ -265,11 +433,156 @@ class _SettingsCard extends StatelessWidget {
     );
 
     if (confirmed == true && context.mounted) {
-      // TODO: gọi POST /auth/logout, xóa token trên máy rồi chuyển về màn Đăng nhập
-      // (làm khi hoàn thành phần Đăng nhập/Đăng ký).
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã đăng xuất (chưa nối backend).')),
+      // POST /auth/logout + xóa token trên máy (kể cả khi mất mạng).
+      await AuthService.logout();
+      if (!context.mounted) return;
+      Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (route) => false,
       );
     }
+  }
+}
+
+/// Hộp thoại sửa tên hiển thị và múi giờ (PATCH /me).
+class _EditProfileDialog extends StatefulWidget {
+  const _EditProfileDialog({required this.user});
+
+  final UserModel user;
+
+  @override
+  State<_EditProfileDialog> createState() => _EditProfileDialogState();
+}
+
+class _EditProfileDialogState extends State<_EditProfileDialog> {
+  static const List<String> _commonTimezones = [
+    'Asia/Ho_Chi_Minh',
+    'Asia/Bangkok',
+    'Asia/Singapore',
+    'Asia/Tokyo',
+    'Asia/Seoul',
+    'Europe/London',
+    'America/New_York',
+    'UTC',
+  ];
+
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _nameController;
+  late final List<String> _options;
+  late String _timezone;
+  bool _saving = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.user.fullName);
+    _timezone = widget.user.timezone;
+    _options = [..._commonTimezones];
+    if (!_options.contains(_timezone)) _options.insert(0, _timezone);
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  String? _validateName(String? value) {
+    final v = (value ?? '').trim();
+    if (v.isEmpty) return 'Vui lòng nhập tên';
+    if (v.length > 100) return 'Tên tối đa 100 ký tự';
+    return null;
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      await ProfileService.updateMe(
+        displayName: _nameController.text.trim(),
+        timezone: _timezone,
+      );
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _error = e.message;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Chỉnh sửa hồ sơ'),
+      content: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextFormField(
+                controller: _nameController,
+                enabled: !_saving,
+                textInputAction: TextInputAction.done,
+                validator: _validateName,
+                decoration: const InputDecoration(
+                  labelText: 'Tên hiển thị',
+                  prefixIcon: Icon(Icons.person_outline_rounded),
+                ),
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                initialValue: _timezone,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  labelText: 'Múi giờ',
+                  prefixIcon: Icon(Icons.public_rounded),
+                ),
+                items: [
+                  for (final tz in _options)
+                    DropdownMenuItem(value: tz, child: Text(tz)),
+                ],
+                onChanged: _saving
+                    ? null
+                    : (value) {
+                        if (value != null) setState(() => _timezone = value);
+                      },
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  _error!,
+                  style: const TextStyle(color: AppTheme.sickBadgeText),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _saving ? null : () => Navigator.of(context).pop(false),
+          child: const Text('Hủy'),
+        ),
+        TextButton(
+          onPressed: _saving ? null : _save,
+          child: _saving
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Lưu'),
+        ),
+      ],
+    );
   }
 }

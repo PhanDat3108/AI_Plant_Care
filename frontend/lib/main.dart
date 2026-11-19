@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'theme/app_theme.dart';
-import 'screens/navigation_bottombar.dart';
+import 'screens/auth_gate.dart';
 
 void main() {
   runApp(const MyApp());
@@ -14,8 +14,8 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'AI Plant Care',
       debugShowCheckedModeBanner: false, 
-      theme: AppTheme.lightTheme,         
-      home: const NavigationBottomBar(), 
+      theme: AppTheme.lightTheme,
+      home: const AuthGate(),
     );
   }
 }
