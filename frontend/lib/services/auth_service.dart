@@ -1,5 +1,5 @@
 import '../core/api_exception.dart';
-import 'api_client.dart';
+import 'dio_client.dart';
 import 'token_storage.dart';
 
 /// Các thao tác xác thực, gọi đúng API trong hợp đồng backend (tiền tố /api/v1
@@ -7,7 +7,7 @@ import 'token_storage.dart';
 class AuthService {
   AuthService._();
 
-  static final ApiClient _api = ApiClient.instance;
+  static final DioClient _api = DioClient.instance;
 
   /// POST /auth/login {email, password}
   /// Thành công: lưu access_token + refresh_token. Trả về data.user (có thể null).

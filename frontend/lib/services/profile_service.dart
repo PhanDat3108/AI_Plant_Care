@@ -1,13 +1,13 @@
 import '../core/api_exception.dart';
 import '../models/user_model.dart';
-import 'api_client.dart';
+import 'dio_client.dart';
 
 /// API hồ sơ (theo PROFILE_API.md). Mọi request cần Bearer token,
-/// ApiClient tự gắn và tự làm mới token khi gặp 401.
+/// DioClient tự gắn và tự làm mới token khi gặp 401.
 class ProfileService {
   ProfileService._();
 
-  static final ApiClient _api = ApiClient.instance;
+  static final DioClient _api = DioClient.instance;
 
   /// GET /me: hồ sơ + thống kê (total_plants, total_ai_scans, care_stats).
   static Future<UserModel> getMe() async {

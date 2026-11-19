@@ -1,199 +1,140 @@
-import 'package:dio/dio.dart';
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:http/http.dart' as http;
 
-import '../core/api_config.dart';
-import '../core/api_exception.dart';
-import 'token_storage.dart';
-
-/// Client gọi API dùng chung cho cả nhóm.
-///
-/// - Tự gắn `Authorization: Bearer <access_token>` vào mọi yêu cầu
-///   (trừ khi gọi với `auth: false`, ví dụ đăng nhập, đăng ký).
-/// - Khi gặp 401: tự gọi POST /auth/refresh, lưu lại 2 token mới rồi gọi lại 1 lần.
-/// - Đọc response chung `{success, data, error, message}` và trả về phần `data`.
-/// - Mọi lỗi được đổi thành [ApiException] với câu báo lỗi đọc được.
-///
-/// Cách dùng ở màn hình khác:
-///   final data = await ApiClient.instance.get('/me');
 class ApiClient {
-  ApiClient._() {
-    final options = BaseOptions(
-      baseUrl: ApiConfig.baseUrl,
-      connectTimeout: const Duration(seconds: 15),
-      receiveTimeout: const Duration(seconds: 20),
-      headers: {'Content-Type': 'application/json'},
-    );
-    _dio = Dio(options);
-    _refreshDio = Dio(options); // riêng, để không bị vòng lặp khi refresh
+  static const _storage = FlutterSecureStorage();
+  static const _defaultTimeout = Duration(seconds: 15);
 
-    _dio.interceptors.add(
-      InterceptorsWrapper(
-        onRequest: (options, handler) async {
-          if (options.extra['skipAuth'] != true) {
-            final token = await TokenStorage.readAccess();
-            if (token != null && token.isNotEmpty) {
-              options.headers['Authorization'] = 'Bearer $token';
-            }
-          }
-          handler.next(options);
-        },
-        onError: (error, handler) async {
-          final request = error.requestOptions;
-          final isUnauthorized = error.response?.statusCode == 401;
-          final canRetry = request.extra['skipAuth'] != true &&
-              request.extra['retried'] != true;
+  static String get baseUrl {
+    if (Platform.isAndroid) {
+      return 'http://10.0.2.2:3100/api/v1';
+    }
+    return 'http://localhost:3100/api/v1';
+  }
 
-          if (isUnauthorized && canRetry) {
-            final refreshed = await _refreshTokens();
-            if (refreshed) {
-              request.extra['retried'] = true;
-              try {
-                final response = await _dio.fetch<dynamic>(request);
-                return handler.resolve(response);
-              } on DioException catch (e) {
-                return handler.next(e);
-              }
-            }
-          }
-          handler.next(error);
-        },
-      ),
+  static Uri _buildUri(String endpoint, [Map<String, String>? queryParameters]) {
+    final uri = Uri.parse('$baseUrl$endpoint');
+    if (queryParameters == null || queryParameters.isEmpty) return uri;
+    return uri.replace(queryParameters: queryParameters);
+  }
+
+  static Future<Map<String,String>> _getHeaders() async {
+    final token = await _storage.read(key: 'access_token');
+    return {
+      'Content-Type': 'application/json',
+      if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+    };
+  }
+
+  static Future<Map<String,String>> get(
+    String endpoint, {
+    Map<String, String>? queryParameters,
+    Duration timeout = _defaultTimeout,}) async {
+    final headers = await _getHeaders();
+    return _send(
+      () => http
+          .get(_buildUri(endpoint, queryParameters), headers: headers)
+          .timeout(timeout),
     );
   }
 
-  static final ApiClient instance = ApiClient._();
-
-  late final Dio _dio;
-  late final Dio _refreshDio;
-
-  // ---- Các hàm tiện dụng ----
-
-  Future<dynamic> get(String path, {bool auth = true}) =>
-      _send('GET', path, auth: auth);
-
-  Future<dynamic> post(String path, {Object? body, bool auth = true}) =>
-      _send('POST', path, body: body, auth: auth);
-
-  Future<dynamic> patch(String path, {Object? body, bool auth = true}) =>
-      _send('PATCH', path, body: body, auth: auth);
-
-  Future<dynamic> delete(String path, {bool auth = true}) =>
-      _send('DELETE', path, auth: auth);
-
-  // ---- Bên trong ----
-
-  Future<dynamic> _send(
-    String method,
-    String path, {
-    Object? body,
-    required bool auth,
+  static Future<Map<String,String>> post(
+    String endpoint, {
+    Map<String, dynamic>? body,
+    Duration timeout = _defaultTimeout,
   }) async {
+    final headers = await _getHeaders();
+    return _send(
+      () => http
+          .post(
+            _buildUri(endpoint),
+            headers: headers,
+            body: body != null ? jsonEncode(body) : null,
+          )
+          .timeout(timeout),
+    );
+  }
+
+  static Future<Map<String,String>> put(
+    String endpoint, {
+    Map<String, dynamic>? body,
+    Duration timeout = _defaultTimeout,
+  }) async {
+    final headers = await _getHeaders();
+    return _send(
+      () => http
+          .put(
+            _buildUri(endpoint),
+            headers: headers,
+            body: body != null ? jsonEncode(body) : null,
+          )
+          .timeout(timeout),
+    );
+  }
+
+  static Future<Map<String,String>> patch(
+    String endpoint, {
+    Map<String, dynamic>? body,
+    Duration timeout = _defaultTimeout,
+  }) async {
+    final headers = await _getHeaders();
+    return _send(
+      () => http
+          .patch(
+            _buildUri(endpoint),
+            headers: headers,
+            body: body != null ? jsonEncode(body) : null,
+          )
+          .timeout(timeout),
+    );
+  }
+
+  static Future<Map<String,String>> delete(
+    String endpoint, {
+    Duration timeout = _defaultTimeout,
+  }) async {
+    final headers = await _getHeaders();
+    return _send(
+      () => http.delete(_buildUri(endpoint), headers: headers).timeout(timeout),
+    );
+  }
+
+  static Future<Map<String,String>> _send(Future<http.Response> Function() request) async {
     try {
-      final response = await _dio.request<dynamic>(
-        path,
-        data: body,
-        options: Options(method: method, extra: {'skipAuth': !auth}),
-      );
-      return _unwrap(response.data, response.statusCode);
-    } on DioException catch (e) {
-      throw _toApiException(e);
+      final response = await request();
+      return _processResponse(response);
+    } on SocketException {
+      throw Exception('Không thể kết nối máy chủ. Vui lòng kiểm tra mạng!');
+    } on TimeoutException {
+      throw Exception('Máy chủ phản hồi quá lâu. Vui lòng thử lại!');
+    } on FormatException {
+      throw Exception('Dữ liệu máy chủ trả về bị lỗi định dạng.');
     }
   }
 
-  /// Bóc `{success, data, error, message}`: trả về `data`, hoặc ném lỗi.
-  dynamic _unwrap(dynamic body, int? statusCode) {
-    if (body is Map) {
-      if (body['success'] == false) {
-        throw ApiException(
-          _messageFrom(body) ?? 'Đã có lỗi xảy ra. Vui lòng thử lại.',
-          statusCode: statusCode,
-        );
-      }
-      return body.containsKey('data') ? body['data'] : body;
-    }
-    return body;
-  }
+  static dynamic _processResponse(http.Response response) {
+    final decodedBody =
+        response.body.isNotEmpty ? jsonDecode(response.body) : <String, dynamic>{};
 
-  ApiException _toApiException(DioException e) {
-    final response = e.response;
-    if (response != null) {
-      final message = _messageFrom(response.data);
-      if (message != null) {
-        return ApiException(message, statusCode: response.statusCode);
-      }
-      switch (response.statusCode) {
-        case 400:
-        case 422:
-          return ApiException('Dữ liệu không hợp lệ.',
-              statusCode: response.statusCode);
-        case 401:
-          return ApiException('Email hoặc mật khẩu không đúng.',
-              statusCode: 401);
-        case 403:
-          return ApiException('Bạn không có quyền thực hiện thao tác này.',
-              statusCode: 403);
-        case 404:
-          return ApiException('Không tìm thấy dữ liệu.', statusCode: 404);
-        case 409:
-          return ApiException('Dữ liệu đã tồn tại.', statusCode: 409);
-      }
-      if ((response.statusCode ?? 0) >= 500) {
-        return ApiException('Máy chủ đang gặp sự cố. Vui lòng thử lại sau.',
-            statusCode: response.statusCode);
-      }
-      return ApiException('Đã có lỗi xảy ra. Vui lòng thử lại.',
-          statusCode: response.statusCode);
+    if (response.statusCode >= 200 &&
+        response.statusCode < 300 &&
+        decodedBody is Map<String, dynamic> &&
+        decodedBody['success'] == true) {
+      return decodedBody['data'];
     }
 
-    switch (e.type) {
-      case DioExceptionType.connectionTimeout:
-      case DioExceptionType.sendTimeout:
-      case DioExceptionType.receiveTimeout:
-        return const ApiException('Kết nối quá chậm. Vui lòng thử lại.');
-      default:
-        return const ApiException(
-          'Không kết nối được máy chủ. Kiểm tra mạng rồi thử lại.',
-        );
-    }
-  }
+    final errorMessage = (decodedBody is Map<String, dynamic> &&
+            decodedBody['message'] != null)
+        ? decodedBody['message'].toString()
+        : 'Đã xảy ra lỗi hệ thống (${response.statusCode}).';
 
-  String? _messageFrom(dynamic body) {
-    if (body is Map) {
-      final error = body['error'];
-      if (error is Map && error['message'] is String) {
-        final m = error['message'] as String;
-        if (m.isNotEmpty) return m;
-      }
-      if (error is String && error.isNotEmpty) return error;
-      final message = body['message'];
-      if (message is String && message.isNotEmpty) return message;
+    if (response.statusCode == 401) {
+      throw Exception('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
     }
-    return null;
-  }
 
-  Future<bool> _refreshTokens() async {
-    final refreshToken = await TokenStorage.readRefresh();
-    if (refreshToken == null || refreshToken.isEmpty) return false;
-
-    try {
-      final response = await _refreshDio.post<dynamic>(
-        '/auth/refresh',
-        data: {'refresh_token': refreshToken},
-      );
-      final body = response.data;
-      final data = (body is Map && body['data'] is Map) ? body['data'] : body;
-      if (data is Map &&
-          data['access_token'] is String &&
-          data['refresh_token'] is String) {
-        await TokenStorage.save(
-          accessToken: data['access_token'] as String,
-          refreshToken: data['refresh_token'] as String,
-        );
-        return true;
-      }
-      return false;
-    } on DioException {
-      await TokenStorage.clear();
-      return false;
-    }
+    throw Exception(errorMessage);
   }
 }
