@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../core/api_exception.dart';
 import '../../models/task_model.dart';
+import '../../services/care_log_service.dart';
 import '../../services/care_task_service.dart';
+import '../../services/plant_care_service.dart';
 import '../../theme/app_theme.dart';
 import 'task_card.dart';
 import 'task_progress_bar.dart';
@@ -17,6 +19,7 @@ class TasksScreen extends StatefulWidget {
 
 class _TasksScreenState extends State<TasksScreen> {
   List<TaskModel> _tasks = [];
+  final Set<String> _updatingTaskIds = {};
   bool _isLoading = true;
   String? _errorMessage;
 
@@ -29,6 +32,28 @@ class _TasksScreenState extends State<TasksScreen> {
   String _formatError(Object e) {
     if (e is ApiException) return e.message;
     return e.toString().replaceAll('Exception: ', '');
+  }
+
+  void _showMessage(String message, {bool isError = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? AppTheme.sickBadgeText : AppTheme.primaryColor,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  String _taskTypeToKind(TaskType type) {
+    switch (type) {
+      case TaskType.water:
+        return 'water';
+      case TaskType.fertilize:
+        return 'fertilize';
+      case TaskType.spray:
+        return 'treat';
+    }
   }
 
   Future<void> _loadTasks() async {
@@ -49,6 +74,81 @@ class _TasksScreenState extends State<TasksScreen> {
         _errorMessage = _formatError(e);
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _toggleTaskCompletion(TaskModel task, bool? newValue) async {
+    if (newValue == null || _updatingTaskIds.contains(task.id)) return;
+    if (task.plantId.isEmpty) {
+      _showMessage('Không xác định được cây của nhiệm vụ này.', isError: true);
+      return;
+    }
+
+    setState(() => _updatingTaskIds.add(task.id));
+
+    try {
+      if (newValue) {
+        final requestId =
+            'task-${task.id}-${DateTime.now().millisecondsSinceEpoch}';
+        await CareLogService.createCareLog(
+          plantId: task.plantId,
+          kind: _taskTypeToKind(task.type),
+          taskId: task.id,
+          requestId: requestId,
+        );
+
+        try {
+          await PlantCareService.syncCarePlan(task.plantId);
+        } catch (_) {
+          // Không chặn trạng thái hoàn thành nếu sync thời tiết lỗi tạm thời
+        }
+
+        if (!mounted) return;
+        setState(() {
+          final index = _tasks.indexWhere((t) => t.id == task.id);
+          if (index != -1) {
+            _tasks[index] = _tasks[index].copyWith(
+              isCompleted: true,
+              state: 'done',
+            );
+          }
+        });
+        _showMessage('Đã ghi nhận hoàn thành "${task.plantNickname}".');
+      } else {
+        final logs = await CareLogService.listByPlant(task.plantId, limit: 100);
+        final matched = logs.where((l) => l.taskId == task.id).toList();
+        if (matched.isEmpty) {
+          _showMessage(
+            'Không tìm thấy nhật ký gắn với nhiệm vụ này để hoàn tác.',
+            isError: true,
+          );
+          return;
+        }
+
+        await CareLogService.deleteCareLog(matched.first.id);
+
+        try {
+          await PlantCareService.syncCarePlan(task.plantId);
+        } catch (_) {}
+
+        if (!mounted) return;
+        setState(() {
+          final index = _tasks.indexWhere((t) => t.id == task.id);
+          if (index != -1) {
+            _tasks[index] = _tasks[index].copyWith(
+              isCompleted: false,
+              state: 'pending',
+            );
+          }
+        });
+        _showMessage('Đã hoàn tác nhiệm vụ về trạng thái chờ.');
+      }
+    } catch (e) {
+      _showMessage(_formatError(e), isError: true);
+    } finally {
+      if (mounted) {
+        setState(() => _updatingTaskIds.remove(task.id));
+      }
     }
   }
 
@@ -105,9 +205,7 @@ class _TasksScreenState extends State<TasksScreen> {
       );
     }
 
-    final isAllCompleted =
-        _tasks.isNotEmpty && _tasks.every((t) => t.isCompleted);
-    if (_tasks.isEmpty || isAllCompleted) {
+    if (_tasks.isEmpty) {
       return RefreshIndicator(
         onRefresh: _loadTasks,
         color: AppTheme.primaryColor,
@@ -121,20 +219,17 @@ class _TasksScreenState extends State<TasksScreen> {
               color: AppTheme.appBarColor,
             ),
             const SizedBox(height: 16),
-            Text(
-              _tasks.isEmpty
-                  ? 'Hôm nay chưa có việc chăm sóc nào.'
-                  : 'Tuyệt vời!\nBạn đã hoàn thành mọi việc hôm nay.',
+            const Text(
+              'Hôm nay chưa có việc chăm sóc nào.',
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppTheme.subTextColor,
-                fontSize: 16,
-              ),
+              style: TextStyle(color: AppTheme.subTextColor, fontSize: 16),
             ),
           ],
         ),
       );
     }
+
+    final isAllCompleted = _tasks.every((t) => t.isCompleted);
 
     return RefreshIndicator(
       onRefresh: _loadTasks,
@@ -142,12 +237,44 @@ class _TasksScreenState extends State<TasksScreen> {
       child: ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.only(top: 8, bottom: 80),
-        itemCount: _tasks.length,
-        itemBuilder: (context, index) => TaskCard(
-          task: _tasks[index],
-          // Chờ API Module 6 (đánh dấu hoàn thành + ghi care_log) nên giữ chỉ đọc
-          onToggle: null,
-        ),
+        itemCount: _tasks.length + (isAllCompleted ? 1 : 0),
+        itemBuilder: (context, index) {
+          if (isAllCompleted && index == 0) {
+            return Container(
+              margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppTheme.healthyBadgeBg,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.task_alt_rounded, color: AppTheme.primaryColor),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Tuyệt vời! Bạn đã hoàn thành mọi việc chăm sóc hôm nay.',
+                      style: TextStyle(
+                        color: AppTheme.healthyBadgeText,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          final task = _tasks[isAllCompleted ? index - 1 : index];
+          final isUpdating = _updatingTaskIds.contains(task.id);
+
+          return TaskCard(
+            task: task,
+            onToggle: isUpdating
+                ? null
+                : (val) => _toggleTaskCompletion(task, val),
+          );
+        },
       ),
     );
   }
