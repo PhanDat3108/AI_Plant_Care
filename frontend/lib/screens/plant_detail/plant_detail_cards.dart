@@ -41,7 +41,8 @@ class ToggleReminderCard extends StatelessWidget {
   final String title;
   final String subtitle;
   final bool value;
-  final ValueChanged<bool> onChanged;
+  final ValueChanged<bool>? onChanged;
+  final VoidCallback? onEdit;
 
   const ToggleReminderCard({
     super.key,
@@ -50,7 +51,8 @@ class ToggleReminderCard extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.value,
-    required this.onChanged,
+    this.onChanged,
+    this.onEdit,
   });
 
   @override
@@ -77,7 +79,7 @@ class ToggleReminderCard extends StatelessWidget {
                 ],
               ),
             ),
-            Switch(value: value, onChanged: onChanged, activeThumbColor: AppTheme.primaryColor),
+            Switch(value: value, onChanged: onChanged, activeColor: AppTheme.primaryColor),
           ],
         ),
       ),
@@ -92,6 +94,8 @@ class LogCard extends StatelessWidget {
   final String action;
   final String date;
   final String note;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
   const LogCard({
     super.key,
@@ -100,6 +104,8 @@ class LogCard extends StatelessWidget {
     required this.action,
     required this.date,
     required this.note,
+    this.onEdit,
+    this.onDelete,
   });
 
   @override
@@ -113,7 +119,10 @@ class LogCard extends StatelessWidget {
           children: [
             Container(
               padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(color: iconColor.withValues(alpha: 0.1), shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                color: iconColor.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
               child: Icon(icon, color: iconColor, size: 24),
             ),
             const SizedBox(width: 16),
@@ -124,12 +133,65 @@ class LogCard extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(action, style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.titleTextColor)),
-                      Text(date, style: const TextStyle(color: AppTheme.subTextColor, fontSize: 11)),
+                      Expanded(
+                        child: Text(
+                          action,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.titleTextColor,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        date,
+                        style: const TextStyle(
+                          color: AppTheme.subTextColor,
+                          fontSize: 11,
+                        ),
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 4),
-                  Text(note, style: const TextStyle(color: AppTheme.subTextColor, fontSize: 13)),
+                  if (note.trim().isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      note,
+                      style: const TextStyle(
+                        color: AppTheme.subTextColor,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                  if (onEdit != null || onDelete != null) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        if (onEdit != null)
+                          TextButton.icon(
+                            onPressed: onEdit,
+                            icon: const Icon(Icons.edit_outlined, size: 16),
+                            label: const Text('Sửa'),
+                            style: TextButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                              foregroundColor: AppTheme.subTextColor,
+                            ),
+                          ),
+                        if (onDelete != null)
+                          TextButton.icon(
+                            onPressed: onDelete,
+                            icon: const Icon(
+                              Icons.delete_outline_rounded,
+                              size: 16,
+                            ),
+                            label: const Text('Xóa'),
+                            style: TextButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                              foregroundColor: AppTheme.sickBadgeText,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),

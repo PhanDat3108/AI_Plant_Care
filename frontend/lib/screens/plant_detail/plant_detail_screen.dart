@@ -1,104 +1,475 @@
 import 'package:flutter/material.dart';
-import '../../theme/app_theme.dart';
+
+import '../../core/api_exception.dart';
 import '../../models/plant_model.dart';
-import '../../services/mock_data_service.dart';
+import '../../services/care_log_service.dart';
+import '../../services/plant_care_service.dart';
+import '../../theme/app_theme.dart';
+import 'plant_detail_dialogs.dart';
 import 'plant_detail_header.dart';
-import 'plant_detail_cards.dart';
+import 'plant_detail_tabs.dart';
 
 class PlantDetailScreen extends StatefulWidget {
   final String plantId;
+  final PlantModel? initialPlant;
 
-  const PlantDetailScreen({super.key, required this.plantId});
+  const PlantDetailScreen({
+    super.key,
+    required this.plantId,
+    this.initialPlant,
+  });
 
   @override
   State<PlantDetailScreen> createState() => _PlantDetailScreenState();
 }
 
-class _PlantDetailScreenState extends State<PlantDetailScreen> with SingleTickerProviderStateMixin {
-  final MockDataService _dataService = MockDataService();
-
+class _PlantDetailScreenState extends State<PlantDetailScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  late TextEditingController _nicknameController;
 
   PlantModel? _plant;
   bool _isLoading = true;
+  bool _isSavingSchedule = false;
+  bool _isSyncingPlan = false;
+  bool _isEnrichingCare = false;
+  bool _isMutatingPlant = false;
+  bool _isMutatingLog = false;
   String? _errorMessage;
+  String? _careDataNotice;
+  List<String> _syncWarnings = [];
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _nicknameController = TextEditingController();
+    _plant = widget.initialPlant;
     _loadPlantData();
   }
 
   @override
   void dispose() {
     _tabController.dispose();
-    _nicknameController.dispose();
     super.dispose();
   }
 
+  String _formatError(Object e) {
+    if (e is ApiException) return e.message;
+    return e.toString().replaceAll('Exception: ', '');
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+    );
+  }
+
+  // --- Tải dữ liệu tổng hợp của cây ---
+
   Future<void> _loadPlantData() async {
-    setState(() { _isLoading = true; _errorMessage = null; });
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+      _careDataNotice = null;
+    });
+
+    Map<String, dynamic>? gardenPlant;
+    CareSchedulesResult? schedules;
+    PlantCareDataResult? careData;
+    List<CareLog> careLogs = widget.initialPlant?.logs ?? const [];
+    String? careDataNotice;
+    Object? fatalError;
+
     try {
-      final data = await _dataService.getPlantDetail(widget.plantId);
-      if (!mounted) return;
-      setState(() { _plant = data; _isLoading = false; });
+      schedules = await PlantCareService.getSchedules(widget.plantId);
     } catch (e) {
+      fatalError = e;
+    }
+
+    try {
+      gardenPlant = await PlantCareService.getGardenPlantById(widget.plantId);
+    } catch (e) {
+      if (widget.initialPlant == null && schedules == null) {
+        fatalError ??= e;
+      }
+    }
+
+    try {
+      careData = await PlantCareService.getCareData(widget.plantId);
+    } on ApiException catch (e) {
+      careDataNotice = e.message;
+    } catch (e) {
+      careDataNotice = _formatError(e);
+    }
+
+    try {
+      careLogs = await CareLogService.listByPlant(widget.plantId, limit: 100);
+    } catch (_) {}
+
+    if (!mounted) return;
+
+    if (gardenPlant == null &&
+        schedules == null &&
+        widget.initialPlant == null) {
+      setState(() {
+        _errorMessage = fatalError != null
+            ? _formatError(fatalError)
+            : 'Không tìm thấy thông tin cây.';
+        _isLoading = false;
+      });
+      return;
+    }
+
+    final base = widget.initialPlant;
+    final waterSchedule = schedules?.findByKind('water');
+    final fertilizeSchedule = schedules?.findByKind('fertilize');
+
+    final nickname = gardenPlant?['nickname']?.toString().trim();
+    final imageKey = gardenPlant?['cover_image_key']?.toString().trim();
+    final speciesId = gardenPlant?['species_id']?.toString().trim();
+    final environment = gardenPlant?['environment']?.toString().trim();
+
+    final waterTime =
+        waterSchedule?.localTime ?? base?.effectiveWaterTime ?? '08:00';
+    final fertilizeTime =
+        fertilizeSchedule?.localTime ?? base?.effectiveFertilizeTime ?? '08:00';
+
+    setState(() {
+      _plant = PlantModel(
+        id: widget.plantId,
+        speciesId: speciesId ?? base?.speciesId,
+        environment: environment ?? base?.environment ?? 'unknown',
+        nickname: (nickname != null && nickname.isNotEmpty)
+            ? nickname
+            : (base?.nickname ?? careData?.commonName ?? 'Cây của tôi'),
+        scientificName:
+            careData?.scientificName ?? base?.scientificName ?? '',
+        commonName: careData?.commonName ?? base?.commonName ?? '',
+        imageUrl: (imageKey != null && imageKey.isNotEmpty)
+            ? imageKey
+            : (base?.imageUrl ?? ''),
+        healthStatus: base?.healthStatus ?? HealthStatus.healthy,
+        diseaseName: base?.diseaseName,
+        symptoms: base?.symptoms,
+        treatmentSteps: base?.treatmentSteps,
+        sunlightInfo: careData?.lightGuide ??
+            base?.sunlightInfo ??
+            'Chưa có hướng dẫn ánh sáng.',
+        waterInfo: careData?.waterGuide ??
+            base?.waterInfo ??
+            'Chưa có hướng dẫn tưới nước.',
+        temperatureInfo: careData?.temperatureGuide ??
+            base?.temperatureInfo ??
+            'Chưa có hướng dẫn nhiệt độ.',
+        soilInfo: careData?.soilGuide ?? base?.soilInfo,
+        fertilizerInfo: careData?.fertilizerGuide ?? base?.fertilizerInfo,
+        careStatus: careData?.careStatus ?? base?.careStatus,
+        wateringFrequencyDays: waterSchedule?.intervalDays ??
+            careData?.wateringDays ??
+            base?.wateringFrequencyDays ??
+            3,
+        fertilizingFrequencyDays: fertilizeSchedule?.intervalDays ??
+            careData?.fertilizingDays ??
+            base?.fertilizingFrequencyDays ??
+            14,
+        reminderTime: waterTime,
+        waterReminderTime: waterTime,
+        fertilizeReminderTime: fertilizeTime,
+        isWateringReminderOn:
+            waterSchedule?.enabled ?? base?.isWateringReminderOn ?? false,
+        isFertilizingReminderOn:
+            fertilizeSchedule?.enabled ?? base?.isFertilizingReminderOn ?? false,
+        logs: careLogs,
+      );
+      _careDataNotice = careDataNotice;
+      _isLoading = false;
+    });
+  }
+
+  // --- Hành động: Dữ liệu chăm sóc AI ---
+
+  Future<void> _enrichCareData() async {
+    if (_isEnrichingCare) return;
+    setState(() => _isEnrichingCare = true);
+
+    try {
+      final careData = await PlantCareService.enrichCareData(widget.plantId);
       if (!mounted) return;
-      setState(() { _errorMessage = e.toString().replaceAll('Exception: ', ''); _isLoading = false; });
+
+      if (careData.draftStatus == 'generating') {
+        _showMessage(
+          'AI đang tạo hướng dẫn chăm sóc, vui lòng tải lại sau vài giây.',
+        );
+      } else {
+        setState(() {
+          _careDataNotice = null;
+          if (_plant != null) {
+            _plant = _plant!.copyWith(
+              scientificName: careData.scientificName ?? _plant!.scientificName,
+              commonName: careData.commonName ?? _plant!.commonName,
+              sunlightInfo: careData.lightGuide ?? _plant!.sunlightInfo,
+              waterInfo: careData.waterGuide ?? _plant!.waterInfo,
+              temperatureInfo:
+                  careData.temperatureGuide ?? _plant!.temperatureInfo,
+              soilInfo: careData.soilGuide ?? _plant!.soilInfo,
+              fertilizerInfo:
+                  careData.fertilizerGuide ?? _plant!.fertilizerInfo,
+              careStatus: careData.careStatus ?? _plant!.careStatus,
+            );
+          }
+        });
+        _showMessage(
+          careData.isMockDraft
+              ? 'Đã tải bản hướng dẫn mẫu (Demo).'
+              : 'Đã cập nhật hướng dẫn chăm sóc từ AI!',
+        );
+      }
+    } catch (e) {
+      _showMessage(_formatError(e));
+    } finally {
+      if (mounted) setState(() => _isEnrichingCare = false);
     }
   }
 
-  void _showEditNicknameDialog() {
+  // --- Hành động: Lịch nhắc & Thời tiết ---
+
+  Future<void> _saveSchedule({
+    required bool isWater,
+    required int intervalDays,
+    required String localTime,
+    required bool enabled,
+  }) async {
+    if (_isSavingSchedule || _plant == null) return;
+    setState(() => _isSavingSchedule = true);
+
+    try {
+      final updated = isWater
+          ? await PlantCareService.updateWaterSchedule(
+              widget.plantId,
+              intervalDays: intervalDays,
+              localTime: localTime,
+              enabled: enabled,
+            )
+          : await PlantCareService.updateFertilizeSchedule(
+              widget.plantId,
+              intervalDays: intervalDays,
+              localTime: localTime,
+              enabled: enabled,
+            );
+
+      CarePlanSyncResult? syncResult;
+      try {
+        syncResult = await PlantCareService.syncCarePlan(widget.plantId);
+      } catch (_) {}
+
+      if (!mounted) return;
+      setState(() {
+        _plant = isWater
+            ? _plant!.copyWith(
+                wateringFrequencyDays: updated.intervalDays,
+                reminderTime: updated.localTime,
+                waterReminderTime: updated.localTime,
+                isWateringReminderOn: updated.enabled,
+              )
+            : _plant!.copyWith(
+                fertilizingFrequencyDays: updated.intervalDays,
+                fertilizeReminderTime: updated.localTime,
+                isFertilizingReminderOn: updated.enabled,
+              );
+        if (syncResult != null) _syncWarnings = syncResult.warnings;
+      });
+      _showMessage(
+        isWater ? 'Đã lưu lịch tưới nước!' : 'Đã lưu lịch bón phân!',
+      );
+    } catch (e) {
+      _showMessage(_formatError(e));
+    } finally {
+      if (mounted) setState(() => _isSavingSchedule = false);
+    }
+  }
+
+  Future<void> _handleEditSchedule({required bool isWater}) async {
     if (_plant == null) return;
-    _nicknameController.text = _plant!.nickname;
+    final result = await showEditScheduleDialog(
+      context,
+      isWater: isWater,
+      currentDays: isWater
+          ? _plant!.wateringFrequencyDays
+          : _plant!.fertilizingFrequencyDays,
+      currentTime: isWater
+          ? _plant!.effectiveWaterTime
+          : _plant!.effectiveFertilizeTime,
+      currentEnabled: isWater
+          ? _plant!.isWateringReminderOn
+          : _plant!.isFertilizingReminderOn,
+    );
+    if (result == null || !mounted) return;
 
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Đổi biệt danh', style: TextStyle(color: AppTheme.titleTextColor)),
-        content: TextField(controller: _nicknameController, decoration: const InputDecoration(hintText: 'Nhập tên gọi mới cho cây...')),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Hủy', style: TextStyle(color: AppTheme.subTextColor))),
-          ElevatedButton(
-            onPressed: () {
-              if (_nicknameController.text.trim().isNotEmpty) {
-                setState(() { _plant = _plant!.copyWith(nickname: _nicknameController.text.trim()); });
-                Navigator.pop(context);
-              }
-            },
-            child: const Text('Lưu'),
-          ),
-        ],
-      ),
+    await _saveSchedule(
+      isWater: isWater,
+      intervalDays: result.intervalDays,
+      localTime: result.localTime,
+      enabled: result.enabled,
     );
   }
 
-  void _confirmDeletePlant() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Xóa cây?', style: TextStyle(color: AppTheme.sickBadgeText)),
-        content: Text('Bạn có chắc chắn muốn xóa "${_plant?.nickname}" khỏi Vườn của mình không?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Hủy', style: TextStyle(color: AppTheme.subTextColor))),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.sickBadgeText),
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đã xóa cây khỏi vườn!')));
-            },
-            child: const Text('Xóa'),
-          ),
-        ],
-      ),
-    );
+  Future<void> _syncCarePlanManually() async {
+    if (_isSyncingPlan) return;
+    setState(() => _isSyncingPlan = true);
+
+    try {
+      final result = await PlantCareService.syncCarePlan(widget.plantId);
+      final latest = await PlantCareService.getSchedules(widget.plantId);
+      if (!mounted) return;
+
+      final water = latest.findByKind('water');
+      final fertilize = latest.findByKind('fertilize');
+
+      setState(() {
+        _syncWarnings = result.warnings;
+        if (_plant != null) {
+          _plant = _plant!.copyWith(
+            wateringFrequencyDays:
+                water?.intervalDays ?? _plant!.wateringFrequencyDays,
+            waterReminderTime: water?.localTime ?? _plant!.waterReminderTime,
+            isWateringReminderOn:
+                water?.enabled ?? _plant!.isWateringReminderOn,
+            fertilizingFrequencyDays:
+                fertilize?.intervalDays ?? _plant!.fertilizingFrequencyDays,
+            fertilizeReminderTime:
+                fertilize?.localTime ?? _plant!.fertilizeReminderTime,
+            isFertilizingReminderOn:
+                fertilize?.enabled ?? _plant!.isFertilizingReminderOn,
+          );
+        }
+      });
+      _showMessage('Đã đồng bộ lịch chăm sóc theo thời tiết!');
+    } catch (e) {
+      _showMessage(_formatError(e));
+    } finally {
+      if (mounted) setState(() => _isSyncingPlan = false);
+    }
   }
+
+  // --- Hành động: Nhật ký chăm sóc ---
+
+  Future<void> _reloadCareLogs() async {
+    try {
+      final logs = await CareLogService.listByPlant(widget.plantId, limit: 100);
+      if (!mounted || _plant == null) return;
+      setState(() => _plant = _plant!.copyWith(logs: logs));
+    } catch (e) {
+      _showMessage(_formatError(e));
+    }
+  }
+
+  Future<void> _handleSaveCareLog({CareLog? existingLog}) async {
+    if (_isMutatingLog) return;
+    final input = await showCareLogDialog(context, existingLog: existingLog);
+    if (input == null || !mounted) return;
+
+    setState(() => _isMutatingLog = true);
+    try {
+      if (existingLog != null) {
+        await CareLogService.updateCareLog(
+          existingLog.id,
+          kind: input.kind,
+          note: input.note,
+        );
+        _showMessage('Đã cập nhật nhật ký chăm sóc!');
+      } else {
+        final kind = input.kind ?? 'water';
+        await CareLogService.createCareLog(
+          plantId: widget.plantId,
+          kind: kind,
+          note: input.note,
+        );
+        if (kind == 'water' || kind == 'fertilize') {
+          try {
+            await PlantCareService.syncCarePlan(widget.plantId);
+          } catch (_) {}
+        }
+        _showMessage('Đã thêm nhật ký chăm sóc!');
+      }
+      await _reloadCareLogs();
+    } catch (e) {
+      _showMessage(_formatError(e));
+    } finally {
+      if (mounted) setState(() => _isMutatingLog = false);
+    }
+  }
+
+  Future<void> _handleDeleteCareLog(CareLog log) async {
+    if (_isMutatingLog) return;
+    final confirmed = await showDeleteCareLogDialog(
+      context,
+      isLinkedToTask: log.taskId != null,
+    );
+    if (!confirmed || !mounted) return;
+
+    setState(() => _isMutatingLog = true);
+    try {
+      await CareLogService.deleteCareLog(log.id);
+      if (log.taskId != null) {
+        try {
+          await PlantCareService.syncCarePlan(widget.plantId);
+        } catch (_) {}
+      }
+      await _reloadCareLogs();
+      _showMessage('Đã xóa mục nhật ký!');
+    } catch (e) {
+      _showMessage(_formatError(e));
+    } finally {
+      if (mounted) setState(() => _isMutatingLog = false);
+    }
+  }
+
+  // --- Hành động: Đổi tên & Xóa cây ---
+
+  Future<void> _handleEditNickname() async {
+    if (_plant == null || _isMutatingPlant) return;
+    final newName = await showEditNicknameDialog(
+      context,
+      currentNickname: _plant!.nickname,
+    );
+    if (newName == null || !mounted) return;
+
+    setState(() => _isMutatingPlant = true);
+    try {
+      await PlantCareService.updatePlantNickname(widget.plantId, newName);
+      if (!mounted) return;
+      setState(() => _plant = _plant!.copyWith(nickname: newName));
+      _showMessage('Đã cập nhật biệt danh cây!');
+    } catch (e) {
+      _showMessage(_formatError(e));
+    } finally {
+      if (mounted) setState(() => _isMutatingPlant = false);
+    }
+  }
+
+  Future<void> _handleDeletePlant() async {
+    if (_plant == null || _isMutatingPlant) return;
+    final confirmed = await showDeletePlantDialog(
+      context,
+      plantNickname: _plant!.nickname,
+    );
+    if (!confirmed || !mounted) return;
+
+    setState(() => _isMutatingPlant = true);
+    try {
+      await PlantCareService.deletePlant(widget.plantId);
+      if (!mounted) return;
+      Navigator.pop(context, true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đã xóa cây khỏi vườn!')),
+      );
+    } catch (e) {
+      if (mounted) setState(() => _isMutatingPlant = false);
+      _showMessage(_formatError(e));
+    }
+  }
+
+  // --- Giao diện ---
 
   @override
   Widget build(BuildContext context) {
@@ -107,7 +478,13 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> with SingleTicker
       appBar: AppBar(
         backgroundColor: AppTheme.appBarColor,
         elevation: 0,
-        leading: IconButton(icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppTheme.titleTextColor), onPressed: () => Navigator.pop(context)),
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: AppTheme.titleTextColor,
+          ),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: const Text('Chi tiết cây'),
       ),
       body: _buildBodyContent(),
@@ -115,7 +492,11 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> with SingleTicker
   }
 
   Widget _buildBodyContent() {
-    if (_isLoading) return const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor));
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: AppTheme.primaryColor),
+      );
+    }
 
     if (_errorMessage != null) {
       return Center(
@@ -124,22 +505,40 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> with SingleTicker
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.error_outline_rounded, size: 64, color: AppTheme.sickBadgeText),
+              const Icon(
+                Icons.error_outline_rounded,
+                size: 64,
+                color: AppTheme.sickBadgeText,
+              ),
               const SizedBox(height: 16),
-              Text(_errorMessage!, textAlign: TextAlign.center, style: const TextStyle(color: AppTheme.subTextColor, fontSize: 16)),
+              Text(
+                _errorMessage!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: AppTheme.subTextColor,
+                  fontSize: 16,
+                ),
+              ),
               const SizedBox(height: 24),
-              ElevatedButton.icon(onPressed: _loadPlantData, icon: const Icon(Icons.refresh_rounded), label: const Text('Thử lại')),
+              ElevatedButton.icon(
+                onPressed: _loadPlantData,
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('Thử lại'),
+              ),
             ],
           ),
         ),
       );
     }
 
-    if (_plant == null) return const Center(child: Text('Không tìm thấy thông tin cây.'));
+    if (_plant == null) {
+      return const Center(child: Text('Không tìm thấy thông tin cây.'));
+    }
 
+    final plant = _plant!;
     return Column(
       children: [
-        PlantDetailHeader(plant: _plant!, onEditNickname: _showEditNicknameDialog),
+        PlantDetailHeader(plant: plant, onEditNickname: _handleEditNickname),
         Container(
           color: AppTheme.scaffoldBackgroundColor,
           child: TabBar(
@@ -148,91 +547,68 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> with SingleTicker
             unselectedLabelColor: AppTheme.subTextColor,
             indicatorColor: AppTheme.primaryColor,
             indicatorWeight: 3,
-            labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-            tabs: const [Tab(text: 'HƯỚNG DẪN'), Tab(text: 'LỊCH NHẮC'), Tab(text: 'NHẬT KÝ')],
+            labelStyle: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+            ),
+            tabs: const [
+              Tab(text: 'HƯỚNG DẪN'),
+              Tab(text: 'LỊCH NHẮC'),
+              Tab(text: 'NHẬT KÝ'),
+            ],
           ),
         ),
         Expanded(
           child: TabBarView(
             controller: _tabController,
-            children: [_buildInstructionTab(), _buildReminderTab(), _buildHistoryTab()],
+            children: [
+              PlantInstructionTab(
+                plant: plant,
+                careDataNotice: _careDataNotice,
+                isEnrichingCare: _isEnrichingCare,
+                isMutatingPlant: _isMutatingPlant,
+                onRefresh: _loadPlantData,
+                onEnrichCare: _enrichCareData,
+                onDeletePlant: _handleDeletePlant,
+              ),
+              PlantReminderTab(
+                plant: plant,
+                isSavingSchedule: _isSavingSchedule,
+                isSyncingPlan: _isSyncingPlan,
+                isMutatingPlant: _isMutatingPlant,
+                syncWarnings: _syncWarnings,
+                onRefresh: _loadPlantData,
+                onToggleWater: (val) => _saveSchedule(
+                  isWater: true,
+                  intervalDays: plant.wateringFrequencyDays,
+                  localTime: plant.effectiveWaterTime,
+                  enabled: val,
+                ),
+                onToggleFertilize: (val) => _saveSchedule(
+                  isWater: false,
+                  intervalDays: plant.fertilizingFrequencyDays,
+                  localTime: plant.effectiveFertilizeTime,
+                  enabled: val,
+                ),
+                onEditWater: () => _handleEditSchedule(isWater: true),
+                onEditFertilize: () => _handleEditSchedule(isWater: false),
+                onSyncPlan: _syncCarePlanManually,
+                onDeletePlant: _handleDeletePlant,
+              ),
+              PlantHistoryTab(
+                logs: plant.logs,
+                isMutatingLog: _isMutatingLog,
+                isMutatingPlant: _isMutatingPlant,
+                onRefresh: _reloadCareLogs,
+                onAddLog: () => _handleSaveCareLog(),
+                onEditLog: (log) => _handleSaveCareLog(existingLog: log),
+                onDeleteLog: _handleDeleteCareLog,
+                onDeletePlant: _handleDeletePlant,
+              ),
+            ],
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildInstructionTab() {
-    return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      children: [
-        InfoCard(icon: Icons.wb_sunny_rounded, iconColor: Colors.orange, title: 'Ánh sáng', subtitle: _plant!.sunlightInfo),
-        InfoCard(icon: Icons.water_drop_rounded, iconColor: Colors.blue, title: 'Lượng nước', subtitle: _plant!.waterInfo),
-        InfoCard(icon: Icons.eco_rounded, iconColor: Colors.brown, title: 'Loại đất', subtitle: _plant!.temperatureInfo),
-        _buildDeleteButton(),
-      ],
-    );
-  }
-
-  Widget _buildReminderTab() {
-    return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      children: [
-        ToggleReminderCard(icon: Icons.water_drop_rounded, iconColor: Colors.blue, title: 'Tưới nước', subtitle: 'Mỗi ${_plant!.wateringFrequencyDays} ngày, lúc ${_plant!.reminderTime}', value: _plant!.isWateringReminderOn, onChanged: (val) => setState(() => _plant = _plant!.copyWith(isWateringReminderOn: val))),
-        ToggleReminderCard(icon: Icons.science_rounded, iconColor: Colors.orange, title: 'Bón phân', subtitle: 'Mỗi ${_plant!.fertilizingFrequencyDays} ngày, lúc ${_plant!.reminderTime}', value: _plant!.isFertilizingReminderOn, onChanged: (val) => setState(() => _plant = _plant!.copyWith(isFertilizingReminderOn: val))),
-        _buildDeleteButton(),
-      ],
-    );
-  }
-
-  Widget _buildHistoryTab() {
-    if (_plant!.logs.isEmpty) {
-      return Column(
-        children: [
-          const SizedBox(height: 40),
-          const Icon(Icons.history_rounded, size: 48, color: AppTheme.appBarColor),
-          const SizedBox(height: 16),
-          const Text('Chưa có ghi chép chăm sóc nào.', style: TextStyle(color: AppTheme.subTextColor)),
-          _buildDeleteButton(),
-        ],
-      );
-    }
-
-    return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      children: [
-        ..._plant!.logs.map((log) {
-          Color iconColor = AppTheme.primaryColor;
-          IconData iconData = Icons.info_outline_rounded;
-          if (log.actionType.contains('tưới'))      { iconColor = Colors.blue;   iconData = Icons.water_drop_rounded; }
-          else if (log.actionType.contains('bón'))   { iconColor = Colors.orange; iconData = Icons.science_rounded; }
-          else if (log.actionType.contains('chẩn'))  { iconColor = AppTheme.primaryColor; iconData = Icons.document_scanner_rounded; }
-
-          return LogCard(
-            icon: iconData, iconColor: iconColor,
-            action: log.actionType,
-            date: '${log.actionDate.day}/${log.actionDate.month}/${log.actionDate.year}',
-            note: log.note,
-          );
-        }),
-        _buildDeleteButton(),
-      ],
-    );
-  }
-
-  Widget _buildDeleteButton() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 24),
-      child: OutlinedButton.icon(
-        onPressed: _confirmDeletePlant,
-        icon: const Icon(Icons.delete_outline_rounded, color: AppTheme.sickBadgeText),
-        label: const Text('Xóa cây khỏi vườn', style: TextStyle(color: AppTheme.sickBadgeText)),
-        style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          side: const BorderSide(color: AppTheme.sickBadgeText),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        ),
-      ),
     );
   }
 }

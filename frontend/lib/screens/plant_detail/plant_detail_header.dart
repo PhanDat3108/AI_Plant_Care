@@ -12,6 +12,38 @@ class PlantDetailHeader extends StatelessWidget {
     required this.onEditNickname,
   });
 
+  Widget _buildPlantAvatar(bool isSick) {
+    final url = plant.imageUrl.trim();
+    final isNetworkUrl = url.startsWith('https://') || url.startsWith('http://');
+
+    final fallback = Center(
+      child: Icon(
+        Icons.park_rounded,
+        size: 60,
+        color: isSick
+            ? AppTheme.sickBadgeText.withValues(alpha: 0.5)
+            : AppTheme.primaryColor,
+      ),
+    );
+
+    return Container(
+      width: 120,
+      height: 120,
+      decoration: const BoxDecoration(
+        color: AppTheme.scaffoldBackgroundColor,
+        shape: BoxShape.circle,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: isNetworkUrl
+          ? Image.network(
+              url,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => fallback,
+            )
+          : fallback,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool isSick = plant.healthStatus == HealthStatus.sick;
@@ -35,23 +67,7 @@ class PlantDetailHeader extends StatelessWidget {
             padding: const EdgeInsets.all(20.0),
             child: Column(
               children: [
-                Container(
-                  width: 120,
-                  height: 120,
-                  decoration: const BoxDecoration(
-                    color: AppTheme.scaffoldBackgroundColor,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Center(
-                    child: Icon(
-                      Icons.park_rounded,
-                      size: 60,
-                      color: isSick
-                          ? AppTheme.sickBadgeText.withValues(alpha: 0.5)
-                          : AppTheme.primaryColor,
-                    ),
-                  ),
-                ),
+                _buildPlantAvatar(isSick),
                 const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -70,18 +86,23 @@ class PlantDetailHeader extends StatelessWidget {
                     const SizedBox(width: 8),
                     InkWell(
                       onTap: onEditNickname,
-                      child: const Icon(Icons.edit_rounded, size: 20, color: AppTheme.subTextColor),
+                      child: const Icon(
+                        Icons.edit_rounded,
+                        size: 20,
+                        color: AppTheme.subTextColor,
+                      ),
                     ),
                   ],
                 ),
-                Text(
-                  plant.scientificName,
-                  style: const TextStyle(
-                    color: AppTheme.subTextColor,
-                    fontStyle: FontStyle.italic,
-                    fontSize: 14,
+                if (plant.scientificName.trim().isNotEmpty)
+                  Text(
+                    plant.scientificName,
+                    style: const TextStyle(
+                      color: AppTheme.subTextColor,
+                      fontStyle: FontStyle.italic,
+                      fontSize: 14,
+                    ),
                   ),
-                ),
                 const SizedBox(height: 12),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
