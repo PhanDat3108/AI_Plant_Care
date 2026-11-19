@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../../theme/app_theme.dart';
-import '../../../services/mock_data_service.dart';
+
+import '../../theme/app_theme.dart';
+import '../../services/mock_data_service.dart';
 import '../ai_result/ai_result_screen.dart';
 import 'scan_viewfinder.dart';
 import 'scan_controls.dart';
@@ -49,7 +50,9 @@ class _ScanScreenState extends State<ScanScreen> {
 
     try {
       // Gọi service quét AI giả lập
-      final result = await _dataService.scanAndDiagnose('assets/images/leaf_placeholder.png');
+      final result = await _dataService.scanAndDiagnose(
+        'assets/images/leaf_placeholder.png',
+      );
 
       // Kiểm tra mounted trước khi dùng context theo chuẩn Flutter Lint
       if (!mounted) return;

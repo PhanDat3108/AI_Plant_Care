@@ -2,12 +2,12 @@ import 'api_client.dart';
 
 class PlantCareService {
   // --- Lịch chăm sóc (Plant Detail) ---
-  static Future<Map<String,dynamic>> getSchedules(String plantId) async {
+  static Future<Map<String, dynamic>> getSchedules(String plantId) async {
     final data = await ApiClient.get('/plants/$plantId/schedules');
     return Map<String, dynamic>.from(data as Map);
   }
 
-  static Future<Map<String,dynamic>> updateWaterSchedule(
+  static Future<Map<String, dynamic>> updateWaterSchedule(
     String plantId, {
     required int intervalDays,
     required String localTime,
@@ -24,7 +24,7 @@ class PlantCareService {
     return Map<String, dynamic>.from(data as Map);
   }
 
-  static Future<Map<String,dynamic>> updateFertilizeSchedule(
+  static Future<Map<String, dynamic>> updateFertilizeSchedule(
     String plantId, {
     required int intervalDays,
     required String localTime,
@@ -41,18 +41,21 @@ class PlantCareService {
     return Map<String, dynamic>.from(data as Map);
   }
 
-  static Future<Map<String,dynamic>> syncCarePlan(String plantId) async {
-    final data = await ApiClient.post('/plants/$plantId/care-plan/sync', body: {});
+  static Future<Map<String, dynamic>> syncCarePlan(String plantId) async {
+    final data = await ApiClient.post(
+      '/plants/$plantId/care-plan/sync',
+      body: {},
+    );
     return Map<String, dynamic>.from(data as Map);
   }
 
   // --- Dữ liệu chăm sóc loài bằng Gemini (Plant Detail / AI Result) ---
-  static Future<Map<String,dynamic>> getCareData(String plantId) async {
+  static Future<Map<String, dynamic>> getCareData(String plantId) async {
     final data = await ApiClient.get('/plants/$plantId/care-data');
     return Map<String, dynamic>.from(data as Map);
   }
 
-  static Future<Map<String,dynamic>> enrichCareData(String plantId) async {
+  static Future<Map<String, dynamic>> enrichCareData(String plantId) async {
     final data = await ApiClient.post(
       '/plants/$plantId/care-data/enrich',
       body: {},
@@ -62,7 +65,7 @@ class PlantCareService {
   }
 
   // --- Lưu cây sau khi quét AI (AI Result) ---
-  static Future<Map<String,dynamic>> saveScannedPlant({
+  static Future<Map<String, dynamic>> saveScannedPlant({
     required String nickname,
     String? speciesId,
     String? coverImageKey,
@@ -72,8 +75,8 @@ class PlantCareService {
       '/garden',
       body: {
         'nickname': nickname,
-        if (speciesId != null) 'species_id': speciesId,
-        if (coverImageKey != null) 'cover_image_key': coverImageKey,
+        'species_id': ?speciesId,
+        'cover_image_key': ?coverImageKey,
         'environment': environment,
       },
     );

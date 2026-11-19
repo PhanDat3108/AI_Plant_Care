@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../theme/app_theme.dart';
+
+import '../../theme/app_theme.dart';
 
 /// Thanh điều khiển phía trên: nút Back + toggle chế độ + nút Flash
 class ScanTopControls extends StatelessWidget {
@@ -25,7 +26,10 @@ class ScanTopControls extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _ScanCircleButton(icon: Icons.arrow_back_ios_new_rounded, onTap: onBack),
+          _ScanCircleButton(
+            icon: Icons.arrow_back_ios_new_rounded,
+            onTap: onBack,
+          ),
           Container(
             height: 48,
             padding: const EdgeInsets.all(3),
@@ -53,7 +57,9 @@ class ScanTopControls extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               _ScanCircleButton(
-                icon: isFlashOn ? Icons.flash_on_rounded : Icons.flash_off_rounded,
+                icon: isFlashOn
+                    ? Icons.flash_on_rounded
+                    : Icons.flash_off_rounded,
                 onTap: onToggleFlash,
               ),
             ],
@@ -100,7 +106,10 @@ class ScanBottomControls extends StatelessWidget {
                 return InkWell(
                   onTap: () => onZoomChanged(zoom),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: isSelected ? Colors.white : Colors.transparent,
                       borderRadius: BorderRadius.circular(20),
@@ -108,8 +117,12 @@ class ScanBottomControls extends StatelessWidget {
                     child: Text(
                       zoom,
                       style: TextStyle(
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                        color: isSelected ? AppTheme.titleTextColor : AppTheme.subTextColor,
+                        fontWeight: isSelected
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                        color: isSelected
+                            ? AppTheme.titleTextColor
+                            : AppTheme.subTextColor,
                       ),
                     ),
                   ),
@@ -133,7 +146,10 @@ class ScanBottomControls extends StatelessWidget {
                     border: Border.all(color: Colors.white, width: 2),
                   ),
                   child: const Center(
-                    child: Icon(Icons.photo_library_rounded, color: AppTheme.subTextColor),
+                    child: Icon(
+                      Icons.photo_library_rounded,
+                      color: AppTheme.subTextColor,
+                    ),
                   ),
                 ),
               ),
@@ -157,10 +173,16 @@ class ScanBottomControls extends StatelessWidget {
                       width: 56,
                       height: 56,
                       decoration: BoxDecoration(
-                        color: isAnalyzing ? Colors.grey : AppTheme.primaryColor,
+                        color: isAnalyzing
+                            ? Colors.grey
+                            : AppTheme.primaryColor,
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 28),
+                      child: const Icon(
+                        Icons.camera_alt_rounded,
+                        color: Colors.white,
+                        size: 28,
+                      ),
                     ),
                   ),
                 ),
