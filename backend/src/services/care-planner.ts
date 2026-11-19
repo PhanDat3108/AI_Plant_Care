@@ -67,7 +67,9 @@ export function carePlanner(
             if (!existing) {
               if (
                 plant.plant_species &&
-                plant.plant_species.care_status !== "verified"
+                !["verified", "ai_suggested"].includes(
+                  plant.plant_species.care_status,
+                )
               ) {
                 if (!warnings.includes("CARE_DATA_REVIEW_REQUIRED"))
                   warnings.push("CARE_DATA_REVIEW_REQUIRED");

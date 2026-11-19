@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../models/plant_extensions.dart';
 import '../models/plant_model.dart';
 import '../theme/app_theme.dart';
@@ -82,12 +83,12 @@ class PlantAvatar extends StatelessWidget {
           ? Image.network(
               imageUrl,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => placeholder,
+              errorBuilder: (_, _, _) => placeholder,
             )
           : Image.asset(
               imageUrl,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => placeholder,
+              errorBuilder: (_, _, _) => placeholder,
             );
       content = SizedBox(width: size, height: size, child: image);
     }

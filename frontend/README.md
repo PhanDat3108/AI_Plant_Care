@@ -44,3 +44,7 @@ API cần đăng nhập sẽ yêu cầu header `Authorization: Bearer <access_to
 - `lib/models/`: Các class dữ liệu (`PlantModel`, `TaskModel`, `NotificationModel`...).
 - `lib/screens/navigation_bottombar.dart`: Thanh điều hướng BottomBar 5 mục đối xứng (Vườn cây, Việc cần làm, nút nổi Quét AI ở giữa, Thông báo, Hồ sơ) kèm các màn hình khung tạm thời để app chạy được ngay.
 
+
+## CI tự động
+
+GitHub Actions chạy `flutter analyze` và `flutter test` khi push/PR. CI dùng Flutter **3.47.5 stable** (Dart 3.13.4), không cần backend `.env` hoặc API key. Xem [hướng dẫn CI cho nhóm](../docs/CI.md) để đọc kết quả và thêm test.

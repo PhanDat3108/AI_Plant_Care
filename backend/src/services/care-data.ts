@@ -7,6 +7,7 @@ import {
   careProposalSchema,
   referencesSchema,
   sameSpecies,
+  type CareProposal,
   type CareReference,
   type ReviewInput,
 } from "./care-data-schema.js";
@@ -26,6 +27,37 @@ export function careDataService(
   provider: CareProvider,
   clock = () => new Date(),
 ) {
+  // Publish real AI output without a human approval step. Never claim human verification.
+  async function publishAI(
+    tx: Prisma.TransactionClient,
+    speciesId: string,
+    proposal: CareProposal,
+    model: string,
+    generatedAt: Date,
+    sources: CareReference[],
+  ) {
+    await tx.plant_species.updateMany({
+      where: { id: speciesId, care_status: { not: "verified" } },
+      data: {
+        ...proposal.care,
+        care_status: "ai_suggested",
+        care_model: model,
+        care_generated_at: generatedAt,
+        care_reviewed_at: null,
+        care_reviewed_by: null,
+        care_source: JSON.stringify({
+          provider: "gemini",
+          model,
+          publication: "automatic",
+          source_mode: sources.length
+            ? "provided_references"
+            : "model_knowledge",
+          sources: sources.map(({ title, url }) => ({ title, url })),
+          assumptions: proposal.assumptions,
+        }),
+      },
+    });
+  }
   async function speciesForPlant(ownerId: string, plantId: string) {
     const plant = await db.plants.findFirst({
       where: { id: plantId, owner_id: ownerId },
@@ -108,8 +140,24 @@ export function careDataService(
         if (
           reusable &&
           ["draft", "approved", "rejected"].includes(existing.status)
-        )
+        ) {
+          // Existing real drafts from the previous workflow become usable on enrich.
+          if (
+            existing.status === "draft" &&
+            !existing.is_mock &&
+            species.care_status !== "ai_suggested"
+          ) {
+            await publishAI(
+              tx,
+              speciesId,
+              careProposalSchema.parse(existing.data),
+              existing.model,
+              existing.generated_at!,
+              referencesSchema.parse(existing.source_documents),
+            );
+          }
           return null;
+        }
         if (
           reusable &&
           existing.status === "failed" &&
@@ -186,11 +234,22 @@ export function careDataService(
           data: { data: proposal, status: "draft", generated_at: clock() },
         });
         if (!changed.count) throw conflict();
-        // Preserve an already verified canonical record during regeneration.
-        await tx.plant_species.updateMany({
-          where: { id: speciesId, care_status: { not: "verified" } },
-          data: { care_status: "draft" },
-        });
+        if (!provider.isMock && provider.provider === "gemini") {
+          await publishAI(
+            tx,
+            speciesId,
+            proposal,
+            provider.model,
+            clock(),
+            claim.identity.sources,
+          );
+        } else {
+          // Demo must never replace real canonical care data.
+          await tx.plant_species.updateMany({
+            where: { id: speciesId, care_status: { in: ["missing", "draft"] } },
+            data: { care_status: "draft" },
+          });
+        }
       });
     } catch (error) {
       const failure =
