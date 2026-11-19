@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 
-import '../../theme/app_theme.dart';
+import '../../core/api_exception.dart';
 import '../../models/task_model.dart';
-import '../../services/mock_data_service.dart';
-import 'tasks_header.dart';
-import 'task_progress_bar.dart';
+import '../../services/care_task_service.dart';
+import '../../theme/app_theme.dart';
 import 'task_card.dart';
+import 'task_progress_bar.dart';
+import 'tasks_header.dart';
 
 class TasksScreen extends StatefulWidget {
   const TasksScreen({super.key});
@@ -15,8 +16,6 @@ class TasksScreen extends StatefulWidget {
 }
 
 class _TasksScreenState extends State<TasksScreen> {
-  final MockDataService _dataService = MockDataService();
-
   List<TaskModel> _tasks = [];
   bool _isLoading = true;
   String? _errorMessage;
@@ -27,35 +26,30 @@ class _TasksScreenState extends State<TasksScreen> {
     _loadTasks();
   }
 
+  String _formatError(Object e) {
+    if (e is ApiException) return e.message;
+    return e.toString().replaceAll('Exception: ', '');
+  }
+
   Future<void> _loadTasks() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
     try {
-      final data = await _dataService.getTodayTasks();
+      final page = await CareTaskService.getTodayTasks();
       if (!mounted) return;
       setState(() {
-        _tasks = data;
+        _tasks = page.items;
         _isLoading = false;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = e.toString().replaceAll('Exception: ', '');
+        _errorMessage = _formatError(e);
         _isLoading = false;
       });
     }
-  }
-
-  void _toggleTaskCompletion(String taskId, bool? newValue) {
-    if (newValue == null) return;
-    setState(() {
-      final index = _tasks.indexWhere((t) => t.id == taskId);
-      if (index != -1) {
-        _tasks[index] = _tasks[index].copyWith(isCompleted: newValue);
-      }
-    });
   }
 
   @override
@@ -114,28 +108,46 @@ class _TasksScreenState extends State<TasksScreen> {
     final isAllCompleted =
         _tasks.isNotEmpty && _tasks.every((t) => t.isCompleted);
     if (_tasks.isEmpty || isAllCompleted) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+      return RefreshIndicator(
+        onRefresh: _loadTasks,
+        color: AppTheme.primaryColor,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
           children: [
-            Icon(Icons.task_alt_rounded, size: 64, color: AppTheme.appBarColor),
-            SizedBox(height: 16),
+            SizedBox(height: MediaQuery.of(context).size.height * 0.22),
+            const Icon(
+              Icons.task_alt_rounded,
+              size: 64,
+              color: AppTheme.appBarColor,
+            ),
+            const SizedBox(height: 16),
             Text(
-              'Tuyệt vời!\nBạn đã hoàn thành mọi việc hôm nay.',
+              _tasks.isEmpty
+                  ? 'Hôm nay chưa có việc chăm sóc nào.'
+                  : 'Tuyệt vời!\nBạn đã hoàn thành mọi việc hôm nay.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: AppTheme.subTextColor, fontSize: 16),
+              style: const TextStyle(
+                color: AppTheme.subTextColor,
+                fontSize: 16,
+              ),
             ),
           ],
         ),
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.only(top: 8, bottom: 80),
-      itemCount: _tasks.length,
-      itemBuilder: (context, index) => TaskCard(
-        task: _tasks[index],
-        onToggle: (val) => _toggleTaskCompletion(_tasks[index].id, val),
+    return RefreshIndicator(
+      onRefresh: _loadTasks,
+      color: AppTheme.primaryColor,
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.only(top: 8, bottom: 80),
+        itemCount: _tasks.length,
+        itemBuilder: (context, index) => TaskCard(
+          task: _tasks[index],
+          // Chờ API Module 6 (đánh dấu hoàn thành + ghi care_log) nên giữ chỉ đọc
+          onToggle: null,
+        ),
       ),
     );
   }
