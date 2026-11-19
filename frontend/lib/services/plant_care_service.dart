@@ -1,9 +1,9 @@
-import 'api_client.dart';
+import 'dio_client.dart';
 
 class PlantCareService {
   // --- Lịch chăm sóc (Plant Detail) ---
   static Future<Map<String, dynamic>> getSchedules(String plantId) async {
-    final data = await ApiClient.get('/plants/$plantId/schedules');
+    final data = await DioClient.instance.get('/plants/$plantId/schedules');
     return Map<String, dynamic>.from(data as Map);
   }
 
@@ -13,7 +13,7 @@ class PlantCareService {
     required String localTime,
     required bool enabled,
   }) async {
-    final data = await ApiClient.put(
+    final data = await DioClient.instance.put(
       '/plants/$plantId/schedules/water',
       body: {
         'interval_days': intervalDays,
@@ -30,7 +30,7 @@ class PlantCareService {
     required String localTime,
     required bool enabled,
   }) async {
-    final data = await ApiClient.put(
+    final data = await DioClient.instance.put(
       '/plants/$plantId/schedules/fertilize',
       body: {
         'interval_days': intervalDays,
@@ -42,7 +42,7 @@ class PlantCareService {
   }
 
   static Future<Map<String, dynamic>> syncCarePlan(String plantId) async {
-    final data = await ApiClient.post(
+    final data = await DioClient.instance.post(
       '/plants/$plantId/care-plan/sync',
       body: {},
     );
@@ -51,15 +51,15 @@ class PlantCareService {
 
   // --- Dữ liệu chăm sóc loài bằng Gemini (Plant Detail / AI Result) ---
   static Future<Map<String, dynamic>> getCareData(String plantId) async {
-    final data = await ApiClient.get('/plants/$plantId/care-data');
+    final data = await DioClient.instance.get('/plants/$plantId/care-data');
     return Map<String, dynamic>.from(data as Map);
   }
 
   static Future<Map<String, dynamic>> enrichCareData(String plantId) async {
-    final data = await ApiClient.post(
+    final data = await DioClient.instance.post(
       '/plants/$plantId/care-data/enrich',
       body: {},
-      timeout: const Duration(seconds: 50),
+      receiveTimeout: const Duration(seconds: 50),
     );
     return Map<String, dynamic>.from(data as Map);
   }
@@ -71,7 +71,7 @@ class PlantCareService {
     String? coverImageKey,
     String environment = 'unknown',
   }) async {
-    final data = await ApiClient.post(
+    final data = await DioClient.instance.post(
       '/garden',
       body: {
         'nickname': nickname,
