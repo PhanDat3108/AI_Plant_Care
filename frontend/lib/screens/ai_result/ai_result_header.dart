@@ -41,7 +41,7 @@ class AiResultHeader extends StatelessWidget {
           ? Image.network(
               url,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => fallback,
+              errorBuilder: (_, _, _) => fallback,
             )
           : fallback,
     );
