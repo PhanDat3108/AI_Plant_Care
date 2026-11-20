@@ -5,6 +5,7 @@ import '../services/garden_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/header_sheet_scaffold.dart';
 import '../widgets/plant_card.dart';
+import 'plant_detail/plant_detail_screen.dart';
 
 class MyGardenScreen extends StatefulWidget {
   const MyGardenScreen({super.key});
@@ -181,18 +182,32 @@ class _MyGardenScreenState extends State<MyGardenScreen> {
       onRefresh: _load,
       child: GridView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        mainAxisSpacing: 14,
-        crossAxisSpacing: 14,
-        mainAxisExtent: 216,
-      ),
-      itemCount: plants.length,
-      itemBuilder: (context, index) {
-        // TODO: onTap mở màn chi tiết cây khi màn đó được làm.
-        return PlantCard(plant: plants[index]);
-      },
+        padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          mainAxisSpacing: 14,
+          crossAxisSpacing: 14,
+          mainAxisExtent: 216,
+        ),
+        itemCount: plants.length,
+        itemBuilder: (context, index) {
+          final plant = plants[index];
+          return PlantCard(
+            plant: plant,
+            onTap: () async {
+              await Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => PlantDetailScreen(
+                    plantId: plant.id,
+                    initialPlant: plant,
+                  ),
+                ),
+              );
+              // Quay lại thì tải lại danh sách (có thể đã đổi tên hoặc xóa cây).
+              if (mounted) _load();
+            },
+          );
+        },
       ),
     );
   }
