@@ -10,19 +10,21 @@ import { careDataRoutes } from "./care-data.js";
 import { carePlanRoutes } from "./care-plan.js";
 import { schedulesRoutes } from "./schedules.js";
 import { notificationsRoutes } from "./notifications.js";
+import { careLogsRoutes } from "./care-logs.js";
 
 export function apiRoutes(db: Database, config: Config) {
   const router = Router();
   router.use(healthRoutes(db, config));
   router.use("/auth", authRoutes(config));
   router.use(authenticate(config));
-  
+
   router.use("/me", profileRoutes(db));
-  router.use(gardenRoutes(db, config)); // Truyền thêm config nếu gardenRoutes của bạn cần dùng authenticate
+  router.use("/garden", gardenRoutes(db, config)); // Truyền thêm config nếu gardenRoutes của bạn cần dùng authenticate
   router.use(careDataRoutes(db, config));
   router.use(carePlanRoutes(db));
   router.use(schedulesRoutes(db));
   router.use(notificationsRoutes(db));
-  
+  router.use(careLogsRoutes(db));
+
   return router;
 }

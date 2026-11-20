@@ -39,7 +39,8 @@ class DioClient {
         onError: (error, handler) async {
           final request = error.requestOptions;
           final isUnauthorized = error.response?.statusCode == 401;
-          final canRetry = request.extra['skipAuth'] != true &&
+          final canRetry =
+              request.extra['skipAuth'] != true &&
               request.extra['retried'] != true;
 
           if (isUnauthorized && canRetry) {
@@ -67,17 +68,76 @@ class DioClient {
 
   // ---- Các hàm tiện dụng ----
 
-  Future<dynamic> get(String path, {bool auth = true}) =>
-      _send('GET', path, auth: auth);
+  Future<dynamic> get(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+    bool auth = true,
+    Duration? receiveTimeout,
+  }) => _send(
+    'GET',
+    path,
+    queryParameters: queryParameters,
+    auth: auth,
+    receiveTimeout: receiveTimeout,
+  );
 
-  Future<dynamic> post(String path, {Object? body, bool auth = true}) =>
-      _send('POST', path, body: body, auth: auth);
+  Future<dynamic> post(
+    String path, {
+    Object? body,
+    Map<String, dynamic>? queryParameters,
+    bool auth = true,
+    Duration? receiveTimeout,
+  }) => _send(
+    'POST',
+    path,
+    body: body,
+    queryParameters: queryParameters,
+    auth: auth,
+    receiveTimeout: receiveTimeout,
+  );
 
-  Future<dynamic> patch(String path, {Object? body, bool auth = true}) =>
-      _send('PATCH', path, body: body, auth: auth);
+  Future<dynamic> put(
+    String path, {
+    Object? body,
+    Map<String, dynamic>? queryParameters,
+    bool auth = true,
+    Duration? receiveTimeout,
+  }) => _send(
+    'PUT',
+    path,
+    body: body,
+    queryParameters: queryParameters,
+    auth: auth,
+    receiveTimeout: receiveTimeout,
+  );
 
-  Future<dynamic> delete(String path, {bool auth = true}) =>
-      _send('DELETE', path, auth: auth);
+  Future<dynamic> patch(
+    String path, {
+    Object? body,
+    Map<String, dynamic>? queryParameters,
+    bool auth = true,
+    Duration? receiveTimeout,
+  }) => _send(
+    'PATCH',
+    path,
+    body: body,
+    queryParameters: queryParameters,
+    auth: auth,
+    receiveTimeout: receiveTimeout,
+  );
+
+  Future<dynamic> delete(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+    bool auth = true,
+    Duration? receiveTimeout,
+  }) => _send(
+    'DELETE',
+    path,
+    queryParameters: queryParameters,
+    auth: auth,
+    receiveTimeout: receiveTimeout,
+  );
 
   // ---- Bên trong ----
 
@@ -85,13 +145,20 @@ class DioClient {
     String method,
     String path, {
     Object? body,
+    Map<String, dynamic>? queryParameters,
     required bool auth,
+    Duration? receiveTimeout,
   }) async {
     try {
       final response = await _dio.request<dynamic>(
         path,
         data: body,
-        options: Options(method: method, extra: {'skipAuth': !auth}),
+        queryParameters: queryParameters,
+        options: Options(
+          method: method,
+          receiveTimeout: receiveTimeout,
+          extra: {'skipAuth': !auth},
+        ),
       );
       return _unwrap(response.data, response.statusCode);
     } on DioException catch (e) {
@@ -123,25 +190,35 @@ class DioClient {
       switch (response.statusCode) {
         case 400:
         case 422:
-          return ApiException('Dữ liệu không hợp lệ.',
-              statusCode: response.statusCode);
+          return ApiException(
+            'Dữ liệu không hợp lệ.',
+            statusCode: response.statusCode,
+          );
         case 401:
-          return ApiException('Email hoặc mật khẩu không đúng.',
-              statusCode: 401);
+          return ApiException(
+            'Email hoặc mật khẩu không đúng.',
+            statusCode: 401,
+          );
         case 403:
-          return ApiException('Bạn không có quyền thực hiện thao tác này.',
-              statusCode: 403);
+          return ApiException(
+            'Bạn không có quyền thực hiện thao tác này.',
+            statusCode: 403,
+          );
         case 404:
           return ApiException('Không tìm thấy dữ liệu.', statusCode: 404);
         case 409:
           return ApiException('Dữ liệu đã tồn tại.', statusCode: 409);
       }
       if ((response.statusCode ?? 0) >= 500) {
-        return ApiException('Máy chủ đang gặp sự cố. Vui lòng thử lại sau.',
-            statusCode: response.statusCode);
+        return ApiException(
+          'Máy chủ đang gặp sự cố. Vui lòng thử lại sau.',
+          statusCode: response.statusCode,
+        );
       }
-      return ApiException('Đã có lỗi xảy ra. Vui lòng thử lại.',
-          statusCode: response.statusCode);
+      return ApiException(
+        'Đã có lỗi xảy ra. Vui lòng thử lại.',
+        statusCode: response.statusCode,
+      );
     }
 
     switch (e.type) {

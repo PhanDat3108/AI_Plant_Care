@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 
-import '../../theme/app_theme.dart';
+import '../../core/api_exception.dart';
 import '../../models/notification_model.dart';
-import '../../services/mock_data_service.dart';
-import 'notification_header.dart';
-import 'notification_filter_chips.dart';
+import '../../services/notification_service.dart';
+import '../../theme/app_theme.dart';
 import 'notification_card.dart';
+import 'notification_filter_chips.dart';
+import 'notification_header.dart';
 
 class NotificationScreen extends StatefulWidget {
   final ValueChanged<bool>? onUnreadChanged;
 
-// hàm constructor
   const NotificationScreen({super.key, this.onUnreadChanged});
 
   @override
@@ -18,10 +18,13 @@ class NotificationScreen extends StatefulWidget {
 }
 
 class _NotificationScreenState extends State<NotificationScreen> {
-  final MockDataService _dataService = MockDataService();
-
   List<AppNotification> _notifications = [];
+  String? _nextCursor;
+  int _unreadCount = 0;
+
   bool _isLoading = true;
+  bool _isLoadingMore = false;
+  bool _isMarkingAll = false;
   String? _errorMessage;
   String _selectedFilter = 'Tất cả';
 
@@ -31,10 +34,13 @@ class _NotificationScreenState extends State<NotificationScreen> {
     _loadNotifications();
   }
 
-// Hàm này đếm xem còn cái nào chưa đọc (!isRead) hay không
   void _notifyUnreadChanged() {
-    final hasUnread = _notifications.any((n) => !n.isRead);
-    widget.onUnreadChanged?.call(hasUnread);            // báo cho BottomBar
+    widget.onUnreadChanged?.call(_unreadCount > 0);
+  }
+
+  String _formatError(Object e) {
+    if (e is ApiException) return e.message;
+    return e.toString().replaceAll('Exception: ', '');
   }
 
   Future<void> _loadNotifications() async {
@@ -42,48 +48,141 @@ class _NotificationScreenState extends State<NotificationScreen> {
       _isLoading = true;
       _errorMessage = null;
     });
+
     try {
-      final data = await _dataService.getNotifications();
+      final results = await Future.wait<dynamic>([
+        NotificationService.getNotifications(
+          limit: 20,
+          unreadOnly: _selectedFilter == 'Chưa đọc',
+        ),
+        NotificationService.getUnreadCount(),
+      ]);
+
       if (!mounted) return;
+      final page = results[0] as NotificationPage;
+      final unreadCount = results[1] as int;
+
       setState(() {
-        _notifications = data;
+        _notifications = page.items;
+        _nextCursor = page.nextCursor;
+        _unreadCount = unreadCount;
         _isLoading = false;
       });
       _notifyUnreadChanged();
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = e.toString().replaceAll('Exception: ', '');
+        _errorMessage = _formatError(e);
         _isLoading = false;
       });
     }
   }
-// người dùng bấm nút "Đọc tất cả"
-  void _markAllAsRead() {
-    setState(() {
-      _notifications = _notifications
-          .map((n) => n.copyWith(isRead: true))
-          .toList();
-    });
-    _notifyUnreadChanged();
-  }
-// người dùng quẹt xóa một thông báo.
-  void _deleteNotification(String id) {
-    setState(() {
-      _notifications.removeWhere((n) => n.id == id);
-    });
-    _notifyUnreadChanged();
+
+  Future<void> _loadMoreNotifications() async {
+    if (_isLoadingMore || _nextCursor == null) return;
+
+    setState(() => _isLoadingMore = true);
+    try {
+      final page = await NotificationService.getNotifications(
+        limit: 20,
+        cursor: _nextCursor,
+        unreadOnly: _selectedFilter == 'Chưa đọc',
+      );
+      if (!mounted) return;
+
+      final existingIds = _notifications.map((n) => n.id).toSet();
+      final newItems =
+          page.items.where((n) => !existingIds.contains(n.id)).toList();
+
+      setState(() {
+        _notifications = [..._notifications, ...newItems];
+        _nextCursor = page.nextCursor;
+        _isLoadingMore = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoadingMore = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_formatError(e)),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
-// người dùng click vào từng thẻ thông báo để đọc.
-  void _markAsRead(String id) {
-    setState(() {
-      final index = _notifications.indexWhere((n) => n.id == id);
-      if (index != -1) {
-        _notifications[index] = _notifications[index].copyWith(isRead: true);
-      }
-    });
-    _notifyUnreadChanged();
+  void _onFilterChanged(String filter) {
+    if (_selectedFilter == filter) return;
+    final needsReload =
+        filter == 'Chưa đọc' || _selectedFilter == 'Chưa đọc';
+    setState(() => _selectedFilter = filter);
+    if (needsReload) {
+      _loadNotifications();
+    }
+  }
+
+  Future<void> _markAsRead(String id) async {
+    final index = _notifications.indexWhere((n) => n.id == id);
+    if (index == -1 || _notifications[index].isRead) return;
+
+    try {
+      await NotificationService.markAsRead(id);
+      if (!mounted) return;
+
+      setState(() {
+        if (_selectedFilter == 'Chưa đọc') {
+          _notifications.removeAt(index);
+        } else {
+          _notifications[index] = _notifications[index].copyWith(isRead: true);
+        }
+        if (_unreadCount > 0) _unreadCount--;
+      });
+      _notifyUnreadChanged();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_formatError(e)),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _markAllAsRead() async {
+    if (_isMarkingAll) return;
+    final unreadItems = _notifications.where((n) => !n.isRead).toList();
+    if (unreadItems.isEmpty) return;
+
+    setState(() => _isMarkingAll = true);
+    try {
+      await Future.wait(
+        unreadItems.map((n) => NotificationService.markAsRead(n.id)),
+      );
+      final latestUnreadCount = await NotificationService.getUnreadCount();
+      if (!mounted) return;
+
+      setState(() {
+        if (_selectedFilter == 'Chưa đọc') {
+          _notifications = [];
+        } else {
+          _notifications =
+              _notifications.map((n) => n.copyWith(isRead: true)).toList();
+        }
+        _unreadCount = latestUnreadCount;
+        _isMarkingAll = false;
+      });
+      _notifyUnreadChanged();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isMarkingAll = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_formatError(e)),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   List<AppNotification> get _filteredNotifications {
@@ -100,18 +199,16 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final unreadCount = _notifications.where((n) => !n.isRead).length;
-
     return Scaffold(
       body: Column(
         children: [
           NotificationHeader(
-            unreadCount: unreadCount,
+            unreadCount: _unreadCount,
             onMarkAllRead: _markAllAsRead,
           ),
           NotificationFilterChips(
             selectedFilter: _selectedFilter,
-            onFilterChanged: (f) => setState(() => _selectedFilter = f),
+            onFilterChanged: _onFilterChanged,
           ),
           Expanded(child: _buildBodyContent()),
         ],
@@ -161,10 +258,13 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
     final displayList = _filteredNotifications;
     if (displayList.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+      return RefreshIndicator(
+        onRefresh: _loadNotifications,
+        color: AppTheme.primaryColor,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
           children: [
+            SizedBox(height: MediaQuery.of(context).size.height * 0.22),
             const Icon(
               Icons.notifications_paused_rounded,
               size: 64,
@@ -186,13 +286,38 @@ class _NotificationScreenState extends State<NotificationScreen> {
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.only(top: 8, bottom: 80),
-      itemCount: displayList.length,
-      itemBuilder: (context, index) => NotificationCard(
-        notification: displayList[index],
-        onDismissed: () => _deleteNotification(displayList[index].id),
-        onTap: () => _markAsRead(displayList[index].id),
+    final showLoadMore = _nextCursor != null;
+
+    return RefreshIndicator(
+      onRefresh: _loadNotifications,
+      color: AppTheme.primaryColor,
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.only(top: 8, bottom: 80),
+        itemCount: displayList.length + (showLoadMore ? 1 : 0),
+        itemBuilder: (context, index) {
+          if (showLoadMore && index == displayList.length) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+              child: OutlinedButton(
+                onPressed: _isLoadingMore ? null : _loadMoreNotifications,
+                child: _isLoadingMore
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Tải thêm thông báo'),
+              ),
+            );
+          }
+
+          final item = displayList[index];
+          return NotificationCard(
+            notification: item,
+            onTap: () => _markAsRead(item.id),
+          );
+        },
       ),
     );
   }

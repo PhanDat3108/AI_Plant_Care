@@ -6,8 +6,52 @@ import '../../theme/app_theme.dart';
 class AiResultHeader extends StatelessWidget {
   final PlantModel plant;
   final bool isSick;
+  final double? confidence;
 
-  const AiResultHeader({super.key, required this.plant, required this.isSick});
+  const AiResultHeader({
+    super.key,
+    required this.plant,
+    required this.isSick,
+    this.confidence,
+  });
+
+  Widget _buildImagePreview() {
+    final url = plant.imageUrl.trim();
+    final isNetworkUrl = url.startsWith('https://') || url.startsWith('http://');
+
+    final fallback = Center(
+      child: Icon(
+        Icons.park_rounded,
+        size: 100,
+        color: isSick
+            ? AppTheme.sickBadgeText.withValues(alpha: 0.5)
+            : AppTheme.primaryColor.withValues(alpha: 0.5),
+      ),
+    );
+
+    return Container(
+      height: 200,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: AppTheme.scaffoldBackgroundColor,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: isNetworkUrl
+          ? Image.network(
+              url,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => fallback,
+            )
+          : fallback,
+    );
+  }
+
+  String _confidenceText() {
+    if (confidence == null) return '94% chính xác';
+    final percent = confidence! <= 1 ? (confidence! * 100).round() : confidence!.round();
+    return '$percent% chính xác';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,23 +65,7 @@ class AiResultHeader extends StatelessWidget {
             // Cụm Ảnh & Điểm chính xác
             Stack(
               children: [
-                Container(
-                  height: 200,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: AppTheme.scaffoldBackgroundColor,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Center(
-                    child: Icon(
-                      Icons.park_rounded,
-                      size: 100,
-                      color: isSick
-                          ? AppTheme.sickBadgeText.withValues(alpha: 0.5)
-                          : AppTheme.primaryColor.withValues(alpha: 0.5),
-                    ),
-                  ),
-                ),
+                _buildImagePreview(),
                 Positioned(
                   top: 12,
                   right: 12,
@@ -47,9 +75,9 @@ class AiResultHeader extends StatelessWidget {
                       color: AppTheme.appBarColor,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Text(
-                      '94% chính xác',
-                      style: TextStyle(
+                    child: Text(
+                      _confidenceText(),
+                      style: const TextStyle(
                         color: AppTheme.primaryColor,
                         fontWeight: FontWeight.bold,
                         fontSize: 12,
@@ -63,17 +91,18 @@ class AiResultHeader extends StatelessWidget {
 
             // Tên cây
             Text(
-              plant.commonName,
+              plant.commonName.isNotEmpty ? plant.commonName : plant.nickname,
               style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 24),
             ),
-            Text(
-              plant.scientificName,
-              style: const TextStyle(
-                color: AppTheme.subTextColor,
-                fontStyle: FontStyle.italic,
-                fontSize: 14,
+            if (plant.scientificName.trim().isNotEmpty)
+              Text(
+                plant.scientificName,
+                style: const TextStyle(
+                  color: AppTheme.subTextColor,
+                  fontStyle: FontStyle.italic,
+                  fontSize: 14,
+                ),
               ),
-            ),
             const SizedBox(height: 12),
 
             // Badge Trạng thái
@@ -84,7 +113,9 @@ class AiResultHeader extends StatelessWidget {
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
-                isSick ? 'Phát hiện bệnh: ${plant.diseaseName}' : 'Khỏe mạnh',
+                isSick
+                    ? 'Phát hiện bệnh: ${plant.diseaseName ?? 'Cần kiểm tra'}'
+                    : 'Khỏe mạnh',
                 style: TextStyle(
                   color: isSick ? AppTheme.sickBadgeText : AppTheme.healthyBadgeText,
                   fontWeight: FontWeight.bold,
