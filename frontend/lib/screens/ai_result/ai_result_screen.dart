@@ -132,7 +132,9 @@ class _AiResultScreenState extends State<AiResultScreen> {
       },
     );
 
-    nameController.dispose();
+    Future.delayed(const Duration(milliseconds: 300), () {
+      nameController.dispose();
+    });
     return result;
   }
 
