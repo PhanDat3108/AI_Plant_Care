@@ -24,7 +24,11 @@ export function readConfig(input: NodeJS.ProcessEnv) {
         .union([z.url({ protocol: /^https$/ }), z.literal("")])
         .optional(),
       SUPABASE_PUBLISHABLE_KEY: z.string().optional(),
+      GOOGLE_AUTH_REDIRECT_URL: z.union([z.url(), z.literal("")]).optional(),
       AUTH_REDIRECT_URL: z.union([z.url(), z.literal("")]).optional(),
+      CRON_SECRET: z
+        .union([z.string().min(32).max(256), z.literal("")])
+        .optional(),
       CARE_AI_MODE: z.enum(["auto", "demo", "live"]).default("auto"),
       GEMINI_API_KEY: z.string().trim().default(""),
       GEMINI_MODEL: z

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import '../models/mock_data.dart';
+import '../core/api_exception.dart';
 import '../models/plant_model.dart';
+import '../services/garden_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/header_sheet_scaffold.dart';
 import '../widgets/plant_card.dart';
+import 'plant_detail/plant_detail_screen.dart';
 
 class MyGardenScreen extends StatefulWidget {
   const MyGardenScreen({super.key});
@@ -16,8 +18,42 @@ class _MyGardenScreenState extends State<MyGardenScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _query = '';
 
-  // TODO: thay bằng dữ liệu lấy từ API vườn cây khi backend sẵn sàng.
-  final List<PlantModel> _plants = mockPlants;
+  List<PlantModel> _plants = [];
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final plants = await GardenService.getPlants();
+      if (!mounted) return;
+      setState(() {
+        _plants = plants;
+        _loading = false;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.message;
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _error = 'Không tải được vườn cây. Vui lòng thử lại.';
+        _loading = false;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -112,6 +148,26 @@ class _MyGardenScreenState extends State<MyGardenScreen> {
   }
 
   Widget _buildBody() {
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_error != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(_error!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: AppTheme.subTextColor)),
+              const SizedBox(height: 12),
+              FilledButton(onPressed: _load, child: const Text('Thử lại')),
+            ],
+          ),
+        ),
+      );
+    }
     final plants = _filteredPlants;
 
     if (plants.isEmpty) {
@@ -122,19 +178,37 @@ class _MyGardenScreenState extends State<MyGardenScreen> {
       );
     }
 
-    return GridView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        mainAxisSpacing: 14,
-        crossAxisSpacing: 14,
-        mainAxisExtent: 216,
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: GridView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          mainAxisSpacing: 14,
+          crossAxisSpacing: 14,
+          mainAxisExtent: 216,
+        ),
+        itemCount: plants.length,
+        itemBuilder: (context, index) {
+          final plant = plants[index];
+          return PlantCard(
+            plant: plant,
+            onTap: () async {
+              await Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => PlantDetailScreen(
+                    plantId: plant.id,
+                    initialPlant: plant,
+                  ),
+                ),
+              );
+              // Quay lại thì tải lại danh sách (có thể đã đổi tên hoặc xóa cây).
+              if (mounted) _load();
+            },
+          );
+        },
       ),
-      itemCount: plants.length,
-      itemBuilder: (context, index) {
-        // TODO: onTap mở màn chi tiết cây khi màn đó được làm.
-        return PlantCard(plant: plants[index]);
-      },
     );
   }
 }

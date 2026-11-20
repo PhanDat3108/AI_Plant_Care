@@ -142,7 +142,10 @@ export function authService(config: Config) {
     google({ code_challenge }: { code_challenge: string }) {
       const url = new URL("/auth/v1/authorize", base());
       url.searchParams.set("provider", "google");
-      url.searchParams.set("redirect_to", redirect());
+      url.searchParams.set(
+        "redirect_to",
+        config.GOOGLE_AUTH_REDIRECT_URL || redirect(),
+      );
       url.searchParams.set("code_challenge", code_challenge);
       url.searchParams.set("code_challenge_method", "s256");
       return { url: url.toString() };

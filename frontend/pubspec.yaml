@@ -37,6 +37,9 @@ dependencies:
   dio: ^5.11.1
   flutter_secure_storage: ^11.2.0
   http: ^1.2.1
+  crypto: ^3.0.8
+  url_launcher: ^6.3.3
+  app_links: ^7.2.2
 dev_dependencies:
   flutter_test:
     sdk: flutter
