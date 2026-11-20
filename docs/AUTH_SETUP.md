@@ -69,3 +69,7 @@ Tài liệu: [Google](https://supabase.com/docs/guides/auth/social-sign-in/auth-
 Đã có `GET /auth/callback` chỉ khi NODE_ENV=development. Khi test trên máy, đặt AUTH_REDIRECT_URL=http://localhost:3100/auth/callback và thêm đúng URL đó vào Supabase Redirect URLs. Mở trang callback để bắt đầu Google: trang tạo PKCE verifier/challenge, giữ verifier tạm trong sessionStorage cùng tab và đổi mã qua API khi quay về. Với email recovery, trang cho nhập mật khẩu mới, gọi reset-password rồi kiểm tra login/logout. Không cần Flutter. Không gửi token, link chứa token hoặc mật khẩu vào chat.
 
 Trang này không lưu token/mật khẩu, xóa query/fragment khỏi thanh địa chỉ và đặt no-store/CSP. Nó không được mở ở production; khi deploy phải dùng callback thực tế đã thống nhất với client.
+
+## Callback riêng cho Google mobile
+
+Google ưu tiên `GOOGLE_AUTH_REDIRECT_URL`, còn email xác nhận/khôi phục dùng `AUTH_REDIRECT_URL`. Xem [các bước cấu hình và tích hợp Flutter](GOOGLE_MOBILE_SETUP.md).
