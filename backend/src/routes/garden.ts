@@ -39,6 +39,11 @@ export function gardenRoutes(db: Database, config?: Config): Router {
   router.patch("/:id/nickname", garden.updateNickname);
 
   /**
+   * GET /:id
+   * Xem chi tiết 1 cây
+   */
+  router.get("/:id", garden.detail)
+  /**
    * DELETE /:id
    * Xóa cây khỏi vườn (status 200).
    */
