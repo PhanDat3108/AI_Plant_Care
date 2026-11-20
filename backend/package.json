@@ -26,7 +26,8 @@
     "reminders:run": "tsx src/jobs/reminders.ts",
     "reminders:start": "node dist/jobs/reminders.js",
     "reminders:watch": "tsx src/jobs/reminders.ts --watch",
-    "care:check": "tsx src/jobs/check-care.ts"
+    "care:check": "tsx src/jobs/check-care.ts",
+    "db:seed:examples": "tsx database/seed-examples.ts"
   },
   "dependencies": {
     "@js-temporal/polyfill": "^0.5.1",

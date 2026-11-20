@@ -10,6 +10,9 @@ export interface AddPlantInput {
   species_id?: string;
   cover_image_key?: string;
   environment?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  region_name?: string | null;
 }
 
 let defaultDb: Database | undefined;
@@ -67,6 +70,9 @@ export async function addPlant(
         nickname: data.nickname.trim(),
         species_id: data.species_id?.trim() || null,
         cover_image_key: data.cover_image_key?.trim() || null,
+        latitude: data.latitude ?? null,
+        longitude: data.longitude ?? null,
+        region_name: data.region_name || null,
         environment: data.environment ?? "unknown",
       },
     });

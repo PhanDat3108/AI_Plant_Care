@@ -94,6 +94,8 @@ it("publishes real AI data once and initializes schedules without human review",
   const service = careDataService(db, p, () => now);
   const first = await service.enrichForPlant(owner, plant.id);
   expect(first.cached).toBe(false);
+  expect(first.schedule_sync).toBe("synced");
+  expect(await db.care_schedules.count({ where: { plant_id: plant.id } })).toBe(2);
   expect(first.species).toMatchObject({
     care_status: "ai_suggested",
     watering_days: 7,
@@ -102,7 +104,7 @@ it("publishes real AI data once and initializes schedules without human review",
   const another = await db.plants.create({
     data: { owner_id: other, species_id: id, nickname: "Same species" },
   });
-  expect((await service.enrichForPlant(other, another.id)).cached).toBe(true);
+  expect(await service.enrichForPlant(other, another.id)).toMatchObject({ cached: true, schedule_sync: "synced" });
   expect(p.generate).toHaveBeenCalledTimes(1);
   const planner = carePlanner(db, { forecast: async () => null }, () => now);
   const pending = await planner.sync(owner, plant.id);

@@ -64,3 +64,23 @@ File 002_supabase_auth_optional.sql chỉ áp khi chọn Supabase Auth và mọi
 - Các test tích hợp DB bổ sung cho bộ test Flutter. Mức Xuất sắc của tiêu chí kiểm thử trong PDF yêu cầu từ 15 test có ý nghĩa với unit test logic chính và ít nhất 2 widget test. Schema cung cấp dữ liệu cho demo trên máy Android thật; điểm còn phụ thuộc ứng dụng, kiểm thử, README và vấn đáp.
 
 Tham khảo [ràng buộc PostgreSQL](https://www.postgresql.org/docs/16/ddl-constraints.html) và [liên kết hồ sơ Supabase Auth](https://supabase.com/docs/guides/auth/managing-user-data).
+
+## Dữ liệu minh họa cho tài khoản đăng nhập thật
+
+Chạy từ thư mục backend:
+
+```bash
+npm run db:seed:examples -- --owner UUID_TAI_KHOAN
+```
+
+Profile phải tồn tại (đăng nhập rồi gọi GET /me trước). Hoặc sử dụng file JSON riêng ngoài repo có email/password của tài khoản test đã xác nhận:
+
+```bash
+npm run db:seed:examples -- --account-file /duong/dan/auth-test.local.json
+```
+
+Cách dùng file đăng nhập qua backend Render để lấy UUID; script ghi dữ liệu vào DATABASE_URL của .env local. Phải chắc rằng đây là cùng DB của Render. Không thêm mật khẩu vào tham số lệnh và không commit file tài khoản.
+
+Bộ mẫu gồm 3 cây tên bắt đầu [MẪU] (Trầu bà, Nha đam, Bàng Singapore), 6 lịch thủ công, 6 việc chăm sóc, 6 nhật ký, 3 kết quả quét is_mock=true và 3 thông báo. Có cây ngoài trời ở TP.HCM, một việc quá hạn, thông báo đã đọc/chưa đọc. Không có ảnh thật; dùng ảnh thay thế trên app. Kiến thức loài hiện có được giữ nguyên; loài mới có hướng dẫn minh họa care_status=draft, không giả làm verified/AI thật. Không gọi AI hoặc gửi email.
+
+ID phụ thuộc tài khoản và bộ seed v1: chạy lại không nhân đôi/ghi đè dữ liệu đã có; bản ghi mẫu đã xóa sẽ được tạo lại. Không chạy seed tự động mỗi lần deploy. Các mẫu thuộc tài khoản được chỉ định nên tài khoản khác không tự nhìn thấy. Tác vụ cron có thể cập nhật lịch/trạng thái sau khi seed. Dữ liệu hiển thị còn phụ thuộc mapping của frontend (ví dụ danh sách cây hiện chưa lấy đầy đủ tên loài/sức khỏe).

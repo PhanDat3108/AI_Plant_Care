@@ -7,7 +7,6 @@ import {
   getGardenPlants as getGardenPlantsService,
   updatePlantNickname as updateNicknameService,
   removePlant as removePlantService,
-  type AddPlantInput,
 } from "../services/garden.js";
 import { HttpError, success } from "../middlewares/errors.js";
 
@@ -30,6 +29,11 @@ const addPlantSchema = z.object({
   species_id: z.string().trim().optional(),
   cover_image_key: z.string().trim().optional(),
   environment: z.enum(["indoor", "outdoor", "unknown"]).optional(),
+  latitude: z.number().min(-90).max(90).nullish(),
+  longitude: z.number().min(-180).max(180).nullish(),
+  region_name: z.string().trim().max(200).nullish(),
+}).refine((plant) => (plant.latitude == null) === (plant.longitude == null), {
+  message: "Cần gửi cả latitude và longitude.",
 });
 
 /**
@@ -51,7 +55,7 @@ export async function addPlantController(
     const ownerId = getUserId(req, res);
     const parsedBody = addPlantSchema.parse(req.body);
 
-    const plant = await addPlantService(ownerId, parsedBody as AddPlantInput, db);
+    const plant = await addPlantService(ownerId, parsedBody, db);
     res.status(201).json({
       success: true,
       data: plant,

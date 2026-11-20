@@ -57,6 +57,14 @@ describe("Garden Controllers", () => {
       );
     });
 
+    it.each([{ latitude: 10 }, { longitude: 106 }, { latitude: 91, longitude: 106 }])(
+      "từ chối tọa độ không hợp lệ %o", async (location) => {
+        mockReq = { body: { nickname: "Sen", ...location } };
+        await addPlantController(mockReq as Request, mockRes as Response);
+        expect(statusMock).toHaveBeenCalledWith(400);
+      },
+    );
+
     it("trả về 400 nếu dữ liệu body không hợp lệ (nickname rỗng)", async () => {
       mockReq = {
         body: {
