@@ -142,8 +142,7 @@ class _PlantDetailScreenState extends State<PlantDetailScreen>
         nickname: (nickname != null && nickname.isNotEmpty)
             ? nickname
             : (base?.nickname ?? careData?.commonName ?? 'Cây của tôi'),
-        scientificName:
-            careData?.scientificName ?? base?.scientificName ?? '',
+        scientificName: careData?.scientificName ?? base?.scientificName ?? '',
         commonName: careData?.commonName ?? base?.commonName ?? '',
         imageUrl: (imageKey != null && imageKey.isNotEmpty)
             ? imageKey
@@ -152,23 +151,28 @@ class _PlantDetailScreenState extends State<PlantDetailScreen>
         diseaseName: base?.diseaseName,
         symptoms: base?.symptoms,
         treatmentSteps: base?.treatmentSteps,
-        sunlightInfo: careData?.lightGuide ??
+        sunlightInfo:
+            careData?.lightGuide ??
             base?.sunlightInfo ??
             'Chưa có hướng dẫn ánh sáng.',
-        waterInfo: careData?.waterGuide ??
+        waterInfo:
+            careData?.waterGuide ??
             base?.waterInfo ??
             'Chưa có hướng dẫn tưới nước.',
-        temperatureInfo: careData?.temperatureGuide ??
+        temperatureInfo:
+            careData?.temperatureGuide ??
             base?.temperatureInfo ??
             'Chưa có hướng dẫn nhiệt độ.',
         soilInfo: careData?.soilGuide ?? base?.soilInfo,
         fertilizerInfo: careData?.fertilizerGuide ?? base?.fertilizerInfo,
         careStatus: careData?.careStatus ?? base?.careStatus,
-        wateringFrequencyDays: waterSchedule?.intervalDays ??
+        wateringFrequencyDays:
+            waterSchedule?.intervalDays ??
             careData?.wateringDays ??
             base?.wateringFrequencyDays ??
             3,
-        fertilizingFrequencyDays: fertilizeSchedule?.intervalDays ??
+        fertilizingFrequencyDays:
+            fertilizeSchedule?.intervalDays ??
             careData?.fertilizingDays ??
             base?.fertilizingFrequencyDays ??
             14,
@@ -178,7 +182,9 @@ class _PlantDetailScreenState extends State<PlantDetailScreen>
         isWateringReminderOn:
             waterSchedule?.enabled ?? base?.isWateringReminderOn ?? false,
         isFertilizingReminderOn:
-            fertilizeSchedule?.enabled ?? base?.isFertilizingReminderOn ?? false,
+            fertilizeSchedule?.enabled ??
+            base?.isFertilizingReminderOn ??
+            false,
         logs: careLogs,
       );
       _careDataNotice = careDataNotice;
@@ -460,9 +466,8 @@ class _PlantDetailScreenState extends State<PlantDetailScreen>
       await PlantCareService.deletePlant(widget.plantId);
       if (!mounted) return;
       Navigator.pop(context, true);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã xóa cây khỏi vườn!')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Đã xóa cây khỏi vườn!')));
     } catch (e) {
       if (mounted) setState(() => _isMutatingPlant = false);
       _showMessage(_formatError(e));
