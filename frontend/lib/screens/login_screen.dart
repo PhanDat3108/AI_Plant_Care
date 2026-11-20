@@ -10,6 +10,9 @@ import '../widgets/header_sheet_scaffold.dart';
 import '../widgets/primary_button.dart';
 import 'navigation_bottombar.dart';
 import 'register_screen.dart';
+import 'dart:async';
+import 'package:app_links/app_links.dart';
+import '../services/google_auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -24,8 +27,38 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _loading = false;
 
+  StreamSubscription<Uri>? _linkSub;
+
+  @override
+  void initState() {
+    super.initState();
+    final links = AppLinks();
+    _linkSub = links.uriLinkStream.listen(_onLink);
+    links.getInitialLink().then((uri) {
+      if (uri != null) _onLink(uri);
+    });
+  }
+
+  Future<void> _onLink(Uri uri) async {
+    if (!GoogleAuthService.isCallback(uri)) return;
+    setState(() => _loading = true);
+    try {
+      final ok = await GoogleAuthService.handleCallback(uri);
+      if (ok && mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const NavigationBottomBar()),
+        );
+      }
+    } on ApiException catch (e) {
+      if (mounted) _showMessage(e.message);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
   @override
   void dispose() {
+    _linkSub?.cancel();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -64,9 +97,15 @@ class _LoginScreenState extends State<LoginScreen> {
     _showMessage('Tính năng quên mật khẩu sẽ sớm có.');
   }
 
-  void _onGoogleLogin() {
-    // TODO: đăng nhập Google (PKCE + deep link) khi có URL callback từ backend.
-    _showMessage('Đăng nhập bằng Google sẽ sớm có.');
+  Future<void> _onGoogleLogin() async {
+    setState(() => _loading = true);
+    try {
+      await GoogleAuthService.start();
+    } on ApiException catch (e) {
+      if (mounted) _showMessage(e.message);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   void _openRegister() {

@@ -28,7 +28,7 @@ class PlantCard extends StatelessWidget {
               PlantAvatar(imageUrl: plant.imageUrl, size: 84),
               const SizedBox(height: 10),
               Text(
-                plant.commonName,
+                plant.commonName.isNotEmpty ? plant.commonName : plant.nickname,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
