@@ -31,6 +31,9 @@ export function readConfig(input: NodeJS.ProcessEnv) {
         .optional(),
       CARE_AI_MODE: z.enum(["auto", "demo", "live"]).default("auto"),
       GEMINI_API_KEY: z.string().trim().default(""),
+      PLANTNET_API_KEY: z.string().trim().default(""),
+      PLANTNET_PROJECT: z.string().trim().default("all"),
+      UPLOAD_DIR: z.string().trim().default("uploads"),
       GEMINI_MODEL: z
         .string()
         .regex(/^[a-zA-Z0-9._-]{1,100}$/)
