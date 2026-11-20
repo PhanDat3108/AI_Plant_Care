@@ -1,3 +1,4 @@
+import { internalReminderRoutes } from "./internal-reminders.js";
 import { Router } from "express";
 import type { Database } from "../config/database.js";
 import type { Config } from "../config/env.js";
@@ -16,6 +17,7 @@ export function apiRoutes(db: Database, config: Config) {
   const router = Router();
   router.use(healthRoutes(db, config));
   router.use("/auth", authRoutes(config));
+  router.use("/internal/reminders", internalReminderRoutes(db, config));
   router.use(authenticate(config));
 
   router.use("/me", profileRoutes(db));
