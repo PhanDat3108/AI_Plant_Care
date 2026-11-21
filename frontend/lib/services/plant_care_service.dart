@@ -276,8 +276,8 @@ class PlantCareService {
         if (coverImageKey != null && coverImageKey.isNotEmpty)
           'cover_image_key': coverImageKey,
         'environment': environment,
-        if (latitude != null) 'latitude': latitude,
-        if (longitude != null) 'longitude': longitude,
+        'latitude': ?latitude,
+        'longitude': ?longitude,
       },
     );
     return Map<String, dynamic>.from(data as Map);
