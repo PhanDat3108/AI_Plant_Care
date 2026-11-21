@@ -147,16 +147,12 @@ class CarePlanSyncResult {
 class PlantCareService {
   // --- Thông tin cây từ Vườn (theo BACKEND_FEATURE_4.md) ---
   static Future<Map<String, dynamic>?> getGardenPlantById(String plantId) async {
-    final data = await DioClient.instance.get('/garden');
-    if (data is List) {
-      for (final item in data) {
-        if (item is Map && item['id']?.toString() == plantId) {
-          return Map<String, dynamic>.from(item);
-        }
-      }
-    }
-    return null;
+  final data = await DioClient.instance.get('/garden/$plantId');
+  if (data is Map) {
+    return Map<String, dynamic>.from(data);
   }
+  return null;
+}
 
   static Future<Map<String, dynamic>> updatePlantNickname(
     String plantId,

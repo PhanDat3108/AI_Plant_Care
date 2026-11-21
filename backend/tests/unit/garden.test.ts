@@ -57,6 +57,9 @@ describe("Garden Service Functions", () => {
 
       expect(mockDb.plants.create).toHaveBeenCalledWith({
         data: {
+          latitude: null,
+          longitude: null,
+          region_name: null,
           owner_id: "user-abc",
           nickname: "Cây Kim Tiền",
           species_id: "species-1",

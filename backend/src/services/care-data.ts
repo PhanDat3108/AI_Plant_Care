@@ -11,6 +11,8 @@ import {
   type CareReference,
   type ReviewInput,
 } from "./care-data-schema.js";
+import { carePlanner } from "./care-planner.js";
+import { openMeteoProvider } from "./weather.js";
 import type { CareProvider } from "./gemini-care.js";
 
 const notFound = () =>
@@ -27,6 +29,7 @@ export function careDataService(
   provider: CareProvider,
   clock = () => new Date(),
 ) {
+  const planner = carePlanner(db, openMeteoProvider(), clock);
   // Publish real AI output without a human approval step. Never claim human verification.
   async function publishAI(
     tx: Prisma.TransactionClient,
@@ -356,7 +359,19 @@ export function careDataService(
       return read(await speciesForPlant(ownerId, plantId));
     },
     async enrichForPlant(ownerId: string, plantId: string) {
-      return generate(await speciesForPlant(ownerId, plantId));
+      const result = await generate(await speciesForPlant(ownerId, plantId));
+      if (!["verified", "ai_suggested"].includes(result.species.care_status)) {
+        return { ...result, schedule_sync: "awaiting_care_data" };
+      }
+      try {
+        await planner.sync(ownerId, plantId);
+        return { ...result, schedule_sync: "synced" };
+      } catch (error) {
+        if (error instanceof HttpError && error.status < 500) throw error;
+        // The periodic reminder job retries sync independently of enrichment.
+        console.warn("CARE_PLAN_SYNC_DEFERRED", plantId);
+        return { ...result, schedule_sync: "deferred" };
+      }
     },
   };
 }

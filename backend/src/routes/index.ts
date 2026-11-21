@@ -12,6 +12,7 @@ import { carePlanRoutes } from "./care-plan.js";
 import { schedulesRoutes } from "./schedules.js";
 import { notificationsRoutes } from "./notifications.js";
 import { careLogsRoutes } from "./care-logs.js";
+import { scansRoutes } from "./scans.js";
 
 export function apiRoutes(db: Database, config: Config) {
   const router = Router();
@@ -27,6 +28,7 @@ export function apiRoutes(db: Database, config: Config) {
   router.use(schedulesRoutes(db));
   router.use(notificationsRoutes(db));
   router.use(careLogsRoutes(db));
+  router.use(scansRoutes(db, config));
 
   return router;
 }
