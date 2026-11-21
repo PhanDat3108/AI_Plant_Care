@@ -59,6 +59,16 @@ class AuthService {
     );
   }
 
+  /// POST /auth/forgot-password {email}
+  /// Phản hồi trung tính, backend gửi email nếu hợp lệ.
+  static Future<void> forgotPassword(String email) async {
+    await _api.post(
+      '/auth/forgot-password',
+      body: {'email': email},
+      auth: false,
+    );
+  }
+
   /// POST /auth/logout rồi xóa token trên thiết bị.
   /// Dù gọi API lỗi (mất mạng...) vẫn xóa token để người dùng thoát được.
   static Future<void> logout() async {

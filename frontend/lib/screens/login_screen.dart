@@ -13,6 +13,7 @@ import 'register_screen.dart';
 import 'dart:async';
 import 'package:app_links/app_links.dart';
 import '../services/google_auth_service.dart';
+import 'forgot_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -93,8 +94,13 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _onForgotPassword() {
-    // TODO: mở màn Quên mật khẩu (POST /auth/forgot-password) khi làm xong.
-    _showMessage('Tính năng quên mật khẩu sẽ sớm có.');
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ForgotPasswordScreen(
+          initialEmail: _emailController.text.trim(),
+        ),
+      ),
+    );
   }
 
   Future<void> _onGoogleLogin() async {
