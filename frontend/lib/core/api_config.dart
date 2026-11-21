@@ -11,6 +11,6 @@ class ApiConfig {
 
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://10.0.2.2:3100/api/v1',
+    defaultValue: 'https://ai-plant-care.onrender.com/api/v1',
   );
 }
