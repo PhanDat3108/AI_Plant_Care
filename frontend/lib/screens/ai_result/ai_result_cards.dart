@@ -68,8 +68,13 @@ class _CareChip extends StatelessWidget {
 /// Thẻ Triệu chứng & Cách xử lý (chỉ hiện khi cây bị bệnh)
 class AiResultDiseaseCard extends StatelessWidget {
   final PlantModel plant;
+  final bool isSick;
 
-  const AiResultDiseaseCard({super.key, required this.plant});
+  const AiResultDiseaseCard({
+    super.key,
+    required this.plant,
+    this.isSick = true,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -81,7 +86,7 @@ class AiResultDiseaseCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Triệu chứng & Cách xử lý',
+              isSick ? 'Triệu chứng & Cách xử lý' : 'Nhận xét & Gợi ý chăm sóc',
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 12),

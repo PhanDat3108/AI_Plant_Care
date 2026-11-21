@@ -53,16 +53,11 @@ class ScanTopControls extends StatelessWidget {
               ],
             ),
           ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _ScanCircleButton(
-                icon: isFlashOn
-                    ? Icons.flash_on_rounded
-                    : Icons.flash_off_rounded,
-                onTap: onToggleFlash,
-              ),
-            ],
+          _ScanCircleButton(
+            icon: isFlashOn
+                ? Icons.flash_on_rounded
+                : Icons.flash_off_rounded,
+            onTap: onToggleFlash,
           ),
         ],
       ),
@@ -75,6 +70,7 @@ class ScanBottomControls extends StatelessWidget {
   final String zoomLevel;
   final bool isAnalyzing;
   final VoidCallback onCapture;
+  final VoidCallback onPickGallery;
   final ValueChanged<String> onZoomChanged;
 
   const ScanBottomControls({
@@ -82,6 +78,7 @@ class ScanBottomControls extends StatelessWidget {
     required this.zoomLevel,
     required this.isAnalyzing,
     required this.onCapture,
+    required this.onPickGallery,
     required this.onZoomChanged,
   });
 
@@ -92,7 +89,7 @@ class ScanBottomControls extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Thanh zoom
+          // Thanh zoom 1x / 2x
           Container(
             margin: const EdgeInsets.only(bottom: 24),
             decoration: BoxDecoration(
@@ -104,7 +101,8 @@ class ScanBottomControls extends StatelessWidget {
               children: ['1x', '2x'].map((zoom) {
                 final isSelected = zoomLevel == zoom;
                 return InkWell(
-                  onTap: () => onZoomChanged(zoom),
+                  borderRadius: BorderRadius.circular(20),
+                  onTap: isAnalyzing ? null : () => onZoomChanged(zoom),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
@@ -117,9 +115,8 @@ class ScanBottomControls extends StatelessWidget {
                     child: Text(
                       zoom,
                       style: TextStyle(
-                        fontWeight: isSelected
-                            ? FontWeight.bold
-                            : FontWeight.normal,
+                        fontWeight:
+                            isSelected ? FontWeight.bold : FontWeight.normal,
                         color: isSelected
                             ? AppTheme.titleTextColor
                             : AppTheme.subTextColor,
@@ -134,28 +131,31 @@ class ScanBottomControls extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              InkWell(
-                onTap: () {}, // Chọn ảnh từ thư viện
+              Material(
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                child: Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.white, width: 2),
-                  ),
-                  child: const Center(
-                    child: Icon(
-                      Icons.photo_library_rounded,
-                      color: AppTheme.subTextColor,
+                child: InkWell(
+                  onTap: isAnalyzing ? null : onPickGallery,
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        Icons.photo_library_rounded,
+                        color: AppTheme.subTextColor,
+                      ),
                     ),
                   ),
                 ),
               ),
               // Nút CHỤP ẢNH
               InkWell(
-                onTap: onCapture,
+                onTap: isAnalyzing ? null : onCapture,
                 borderRadius: BorderRadius.circular(40),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
@@ -239,17 +239,17 @@ class _ScanCircleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(24),
-      child: Container(
-        width: 48,
-        height: 48,
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.9),
-          shape: BoxShape.circle,
+    return Material(
+      color: Colors.white.withValues(alpha: 0.9),
+      shape: const CircleBorder(),
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: SizedBox(
+          width: 48,
+          height: 48,
+          child: Icon(icon, color: AppTheme.primaryColor, size: 22),
         ),
-        child: Icon(icon, color: AppTheme.primaryColor, size: 22),
       ),
     );
   }

@@ -14,14 +14,14 @@ class NotificationScreen extends StatefulWidget {
   const NotificationScreen({super.key, this.onUnreadChanged});
 
   @override
-  State<NotificationScreen> createState() => _NotificationScreenState();
+  State<NotificationScreen> createState() => NotificationScreenState();
 }
 
-class _NotificationScreenState extends State<NotificationScreen> {
+class NotificationScreenState extends State<NotificationScreen> {
   List<AppNotification> _notifications = [];
   String? _nextCursor;
   int _unreadCount = 0;
-
+  
   bool _isLoading = true;
   bool _isLoadingMore = false;
   bool _isMarkingAll = false;
@@ -31,7 +31,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
   @override
   void initState() {
     super.initState();
-    _loadNotifications();
+    loadNotifications();
   }
 
   void _notifyUnreadChanged() {
@@ -43,7 +43,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
     return e.toString().replaceAll('Exception: ', '');
   }
 
-  Future<void> _loadNotifications() async {
+  Future<void> loadNotifications() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -117,7 +117,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
         filter == 'Chưa đọc' || _selectedFilter == 'Chưa đọc';
     setState(() => _selectedFilter = filter);
     if (needsReload) {
-      _loadNotifications();
+      loadNotifications();
     }
   }
 
@@ -189,11 +189,6 @@ class _NotificationScreenState extends State<NotificationScreen> {
     if (_selectedFilter == 'Chưa đọc') {
       return _notifications.where((n) => !n.isRead).toList();
     }
-    if (_selectedFilter == 'Kết quả AI') {
-      return _notifications
-          .where((n) => n.type == NotificationType.aiResult)
-          .toList();
-    }
     return _notifications;
   }
 
@@ -246,7 +241,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
               ),
               const SizedBox(height: 24),
               ElevatedButton.icon(
-                onPressed: _loadNotifications,
+                onPressed: loadNotifications,
                 icon: const Icon(Icons.refresh_rounded),
                 label: const Text('Thử lại'),
               ),
@@ -259,7 +254,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
     final displayList = _filteredNotifications;
     if (displayList.isEmpty) {
       return RefreshIndicator(
-        onRefresh: _loadNotifications,
+        onRefresh: loadNotifications,
         color: AppTheme.primaryColor,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -289,7 +284,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
     final showLoadMore = _nextCursor != null;
 
     return RefreshIndicator(
-      onRefresh: _loadNotifications,
+      onRefresh: loadNotifications,
       color: AppTheme.primaryColor,
       child: ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -321,4 +316,6 @@ class _NotificationScreenState extends State<NotificationScreen> {
       ),
     );
   }
+
+  void reload() {}
 }

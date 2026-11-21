@@ -13,7 +13,7 @@ class NotificationFilterChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final filters = ['Tất cả', 'Chưa đọc', 'Kết quả AI'];
+    final filters = ['Tất cả', 'Chưa đọc'];
 
     return Container(
       color: AppTheme.appBarColor,
