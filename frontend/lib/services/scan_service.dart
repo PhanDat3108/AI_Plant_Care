@@ -5,6 +5,13 @@ import 'package:dio/dio.dart';
 import '../models/plant_model.dart';
 import 'dio_client.dart';
 
+double? _parseDouble(dynamic val) {
+  if (val == null) return null;
+  if (val is num) return val.toDouble();
+  if (val is String) return double.tryParse(val);
+  return null;
+}
+
 class ScanFindingItem {
   final String reportedName;
   final double? confidence;
@@ -31,7 +38,7 @@ class ScanFindingItem {
 
     return ScanFindingItem(
       reportedName: json['reported_name']?.toString().trim() ?? '',
-      confidence: (json['confidence'] as num?)?.toDouble(),
+      confidence: _parseDouble(json['confidence']),
       symptoms: json['symptoms']?.toString().trim(),
       possibleCause: json['possible_cause']?.toString().trim(),
       treatmentSteps: steps,
@@ -81,7 +88,7 @@ class ScanResponse {
       imageKey: json['image_key']?.toString() ?? '',
       speciesId: json['species_id']?.toString(),
       reportedSpeciesName: json['reported_species_name']?.toString().trim(),
-      speciesConfidence: (json['species_confidence'] as num?)?.toDouble(),
+      speciesConfidence: _parseDouble(json['species_confidence']),
       healthStatus: json['health_status']?.toString() ?? 'unknown',
       findings: findings,
     );
