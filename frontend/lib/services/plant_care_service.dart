@@ -265,6 +265,8 @@ class PlantCareService {
     String? speciesId,
     String? coverImageKey,
     String environment = 'unknown',
+    double? latitude,
+    double? longitude,
   }) async {
     final data = await DioClient.instance.post(
       '/garden',
@@ -274,6 +276,8 @@ class PlantCareService {
         if (coverImageKey != null && coverImageKey.isNotEmpty)
           'cover_image_key': coverImageKey,
         'environment': environment,
+        if (latitude != null) 'latitude': latitude,
+        if (longitude != null) 'longitude': longitude,
       },
     );
     return Map<String, dynamic>.from(data as Map);

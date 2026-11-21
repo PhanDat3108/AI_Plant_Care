@@ -16,6 +16,9 @@ class NavigationBottomBar extends StatefulWidget {
 }
 
 class _NavigationBottomBarState extends State<NavigationBottomBar> {
+  final GlobalKey<MyGardenScreenState> _gardenKey = GlobalKey<MyGardenScreenState>();
+  final GlobalKey<TasksScreenState> _tasksKey = GlobalKey<TasksScreenState>();
+  final GlobalKey<NotificationScreenState> _notificationKey = GlobalKey<NotificationScreenState>();
   int _selectedIndex = 0;
   bool _hasUnreadNotification = false;
 
@@ -25,9 +28,10 @@ class _NavigationBottomBarState extends State<NavigationBottomBar> {
   void initState() {
     super.initState();
     _screens = [
-      const MyGardenScreen(),
-      const TasksScreen(),
+      MyGardenScreen(key: _gardenKey),
+      TasksScreen(key: _tasksKey),
       NotificationScreen(
+        key: _notificationKey,
         onUnreadChanged: (hasUnread) {
           setState(() {
             _hasUnreadNotification = hasUnread;
@@ -42,8 +46,10 @@ class _NavigationBottomBarState extends State<NavigationBottomBar> {
     setState(() {
       _selectedIndex = index;
     });
+    if (index == 0) _gardenKey.currentState?.reload();
+    if (index == 1) _tasksKey.currentState?.loadTasks();
+    if (index == 2) _notificationKey.currentState?.loadNotifications();
   }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -53,12 +59,12 @@ class _NavigationBottomBarState extends State<NavigationBottomBar> {
         //điều chỉnh nút chụp theo phương Oy
         offset: const Offset(0, 15),
         child: FloatingActionButton(
-          onPressed: () {
-            // Điều hướng đè lên bằng Navigator.push thay vì chuyển tab
-            Navigator.push(
+          onPressed: () async {
+            await Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const ScanScreen()),
             );
+            _gardenKey.currentState?.reload();
           },
           backgroundColor: AppTheme.primaryColor,
           shape: const CircleBorder(),
@@ -70,6 +76,7 @@ class _NavigationBottomBarState extends State<NavigationBottomBar> {
           ),
         ),
       ),
+      
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
 
       bottomNavigationBar: BottomAppBar(

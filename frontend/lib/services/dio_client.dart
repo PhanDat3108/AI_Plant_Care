@@ -28,6 +28,11 @@ class DioClient {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
+          if (options.data is FormData) {
+            options.headers.remove('Content-Type');
+            options.headers.remove(Headers.contentTypeHeader);
+            options.contentType = null;
+          }
           if (options.extra['skipAuth'] != true) {
             final token = await TokenStorage.readAccess();
             if (token != null && token.isNotEmpty) {
@@ -47,6 +52,9 @@ class DioClient {
             final refreshed = await _refreshTokens();
             if (refreshed) {
               request.extra['retried'] = true;
+              if (request.data is FormData) {
+                request.data = (request.data as FormData).clone();
+              }
               try {
                 final response = await _dio.fetch<dynamic>(request);
                 return handler.resolve(response);

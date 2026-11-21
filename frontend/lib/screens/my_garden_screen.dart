@@ -11,13 +11,13 @@ class MyGardenScreen extends StatefulWidget {
   const MyGardenScreen({super.key});
 
   @override
-  State<MyGardenScreen> createState() => _MyGardenScreenState();
+  State<MyGardenScreen> createState() => MyGardenScreenState();
 }
 
-class _MyGardenScreenState extends State<MyGardenScreen> {
+class MyGardenScreenState extends State<MyGardenScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _query = '';
-
+  void reload() => _load();
   List<PlantModel> _plants = [];
   bool _loading = true;
   String? _error;
@@ -171,10 +171,21 @@ class _MyGardenScreenState extends State<MyGardenScreen> {
     final plants = _filteredPlants;
 
     if (plants.isEmpty) {
-      return _EmptyState(
-        message: _plants.isEmpty
-            ? 'Vườn của bạn chưa có cây nào.\nHãy bấm nút Quét AI để thêm cây đầu tiên!'
-            : 'Không tìm thấy cây nào phù hợp.',
+      return RefreshIndicator(
+        onRefresh: _load,
+        child: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: SizedBox(
+              height: constraints.maxHeight,
+              child: _EmptyState(
+                message: _plants.isEmpty
+                    ? 'Vườn của bạn chưa có cây nào.\nHãy bấm nút Quét AI để thêm cây đầu tiên!'
+                    : 'Không tìm thấy cây nào phù hợp.',
+              ),
+            ),
+          ),
+        ),
       );
     }
 

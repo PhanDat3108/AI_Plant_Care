@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../theme/app_theme.dart';
 import '../../models/task_model.dart';
 
@@ -14,12 +15,8 @@ class TaskProgressBar extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          const Icon(Icons.search, color: AppTheme.subTextColor, size: 28),
-          if (totalCount > 0)
-            Container(
+      child: totalCount > 0
+          ? Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
                 color: completedCount == totalCount
@@ -36,9 +33,8 @@ class TaskProgressBar extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-            ),
-        ],
-      ),
+            )
+          : const SizedBox.shrink(),
     );
   }
 }

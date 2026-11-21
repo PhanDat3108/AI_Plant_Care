@@ -13,11 +13,21 @@ import 'ai_result_header.dart';
 class AiResultScreen extends StatefulWidget {
   final PlantModel plant;
   final double? confidence;
+  final String? localImagePath;
+  final String? coverImageKey;
+  final String? healthStatusRaw;
+  final bool isMock;
+  final String? existingPlantId;
 
   const AiResultScreen({
     super.key,
     required this.plant,
     this.confidence,
+    this.localImagePath,
+    this.coverImageKey,
+    this.healthStatusRaw,
+    this.isMock = false,
+    this.existingPlantId,
   });
 
   @override
@@ -27,21 +37,31 @@ class AiResultScreen extends StatefulWidget {
 class _AiResultScreenState extends State<AiResultScreen> {
   bool _isAdding = false;
 
+  static const _cityCoords = <String, ({double lat, double lng})>{
+    'Hà Nội': (lat: 21.0285, lng: 105.8542),
+    'TP. Hồ Chí Minh': (lat: 10.8231, lng: 106.6297),
+    'Đà Nẵng': (lat: 16.0544, lng: 108.2022),
+    'Hải Phòng': (lat: 20.8449, lng: 106.6881),
+    'Cần Thơ': (lat: 10.0452, lng: 105.7469),
+  };
+
   String _formatError(Object e) {
     if (e is ApiException) return e.message;
     return e.toString().replaceAll('Exception: ', '');
   }
 
-  Future<({String nickname, String environment})?> _showSavePlantDialog() async {
-    final defaultName = widget.plant.nickname.trim().isNotEmpty
+  Future<
+    ({String nickname, String environment, double latitude, double longitude})?
+  >
+  _showSavePlantDialog() {
+    var nicknameText = widget.plant.nickname.trim().isNotEmpty
         ? widget.plant.nickname.trim()
         : widget.plant.commonName.trim();
-
-    final nameController = TextEditingController(text: defaultName);
     var selectedEnvironment = widget.plant.environment;
+    var selectedCity = 'Hà Nội';
     String? errorText;
 
-    final result = await showDialog<({String nickname, String environment})>(
+    return showDialog<({String nickname, String environment, double latitude, double longitude})>(
       context: context,
       builder: (dialogContext) {
         return StatefulBuilder(
@@ -58,8 +78,9 @@ class _AiResultScreenState extends State<AiResultScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  TextField(
-                    controller: nameController,
+                  TextFormField(
+                    initialValue: nicknameText,
+                    onChanged: (val) => nicknameText = val,
                     decoration: InputDecoration(
                       labelText: 'Biệt danh cho cây',
                       hintText: 'Ví dụ: Trầu bà phòng khách',
@@ -75,6 +96,28 @@ class _AiResultScreenState extends State<AiResultScreen> {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Khu vực (lấy thời tiết)',
+                    style: TextStyle(
+                      color: AppTheme.subTextColor,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  DropdownButton<String>(
+                    isExpanded: true,
+                    value: selectedCity,
+                    items: _cityCoords.keys
+                        .map(
+                          (city) =>
+                              DropdownMenuItem(value: city, child: Text(city)),
+                        )
+                        .toList(),
+                    onChanged: (val) {
+                      if (val != null) setDialogState(() => selectedCity = val);
+                    },
+                  ),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
@@ -82,20 +125,23 @@ class _AiResultScreenState extends State<AiResultScreen> {
                       ChoiceChip(
                         label: const Text('Trong nhà'),
                         selected: selectedEnvironment == 'indoor',
-                        onSelected: (_) =>
-                            setDialogState(() => selectedEnvironment = 'indoor'),
+                        onSelected: (_) => setDialogState(
+                          () => selectedEnvironment = 'indoor',
+                        ),
                       ),
                       ChoiceChip(
                         label: const Text('Ngoài trời'),
                         selected: selectedEnvironment == 'outdoor',
-                        onSelected: (_) =>
-                            setDialogState(() => selectedEnvironment = 'outdoor'),
+                        onSelected: (_) => setDialogState(
+                          () => selectedEnvironment = 'outdoor',
+                        ),
                       ),
                       ChoiceChip(
                         label: const Text('Chưa rõ'),
                         selected: selectedEnvironment == 'unknown',
-                        onSelected: (_) =>
-                            setDialogState(() => selectedEnvironment = 'unknown'),
+                        onSelected: (_) => setDialogState(
+                          () => selectedEnvironment = 'unknown',
+                        ),
                       ),
                     ],
                   ),
@@ -111,17 +157,20 @@ class _AiResultScreenState extends State<AiResultScreen> {
                 ),
                 ElevatedButton(
                   onPressed: () {
-                    final nickname = nameController.text.trim();
+                    final nickname = nicknameText.trim();
                     if (nickname.isEmpty) {
                       setDialogState(() {
                         errorText = 'Vui lòng nhập tên gọi cho cây.';
                       });
                       return;
                     }
-                    Navigator.pop(
-                      dialogContext,
-                      (nickname: nickname, environment: selectedEnvironment),
-                    );
+                    final coords = _cityCoords[selectedCity]!;
+                    Navigator.pop(dialogContext, (
+                      nickname: nickname,
+                      environment: selectedEnvironment,
+                      latitude: coords.lat,
+                      longitude: coords.lng,
+                    ));
                   },
                   child: const Text('Lưu cây'),
                 ),
@@ -131,11 +180,6 @@ class _AiResultScreenState extends State<AiResultScreen> {
         );
       },
     );
-
-    Future.delayed(const Duration(milliseconds: 300), () {
-      nameController.dispose();
-    });
-    return result;
   }
 
   Future<void> _addToGarden() async {
@@ -147,32 +191,35 @@ class _AiResultScreenState extends State<AiResultScreen> {
     setState(() => _isAdding = true);
 
     try {
+      final rawCoverKey = (widget.coverImageKey?.trim().isNotEmpty ?? false)
+          ? widget.coverImageKey!.trim()
+          : (widget.plant.imageUrl.trim().isNotEmpty
+                ? widget.plant.imageUrl.trim()
+                : null);
+
       final created = await PlantCareService.saveScannedPlant(
         nickname: input.nickname,
         speciesId: widget.plant.speciesId,
-        coverImageKey: widget.plant.imageUrl.trim().isNotEmpty
-            ? widget.plant.imageUrl.trim()
-            : null,
+        coverImageKey: rawCoverKey,
         environment: input.environment,
+        latitude: input.latitude,
+        longitude: input.longitude
       );
 
       final newPlantId = created['id']?.toString();
 
       if (newPlantId != null && newPlantId.isNotEmpty) {
-        // Đồng bộ kế hoạch chăm sóc sau khi transaction lưu cây đã commit
         try {
           await PlantCareService.syncCarePlan(newPlantId);
         } catch (_) {
           // Không chặn luồng lưu cây nếu loài chưa có dữ liệu duyệt/thời tiết
         }
 
-        // Bổ sung dữ liệu chăm sóc AI ở request riêng để không giữ màn hình chờ Gemini
         if (widget.plant.speciesId != null &&
             widget.plant.speciesId!.trim().isNotEmpty) {
           unawaited(
-            PlantCareService.enrichCareData(newPlantId).catchError(
-              (_) => const PlantCareDataResult(),
-            ),
+            PlantCareService.enrichCareData(newPlantId)
+                .catchError((_) => const PlantCareDataResult()),
           );
         }
       }
@@ -220,6 +267,9 @@ class _AiResultScreenState extends State<AiResultScreen> {
   @override
   Widget build(BuildContext context) {
     final bool isSick = widget.plant.healthStatus == HealthStatus.sick;
+    final bool hasFindings =
+        (widget.plant.symptoms?.isNotEmpty ?? false) ||
+        (widget.plant.treatmentSteps?.isNotEmpty ?? false);
 
     return Scaffold(
       backgroundColor: AppTheme.scaffoldBackgroundColor,
@@ -243,17 +293,20 @@ class _AiResultScreenState extends State<AiResultScreen> {
               plant: widget.plant,
               isSick: isSick,
               confidence: widget.confidence,
+              localImagePath: widget.localImagePath,
+              healthStatusRaw: widget.healthStatusRaw,
+              isMock: widget.isMock,
             ),
             AiResultCareSummary(plant: widget.plant),
-            if (isSick) AiResultDiseaseCard(plant: widget.plant),
+            if (isSick || hasFindings)
+              AiResultDiseaseCard(plant: widget.plant, isSick: isSick),
           ],
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: AiResultAddButton(
-        isAdding: _isAdding,
-        onAdd: _addToGarden,
-      ),
+      floatingActionButton: widget.existingPlantId == null
+          ? AiResultAddButton(isAdding: _isAdding, onAdd: _addToGarden)
+          : null,
     );
   }
 }

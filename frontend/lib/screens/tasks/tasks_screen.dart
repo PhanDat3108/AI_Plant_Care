@@ -14,10 +14,10 @@ class TasksScreen extends StatefulWidget {
   const TasksScreen({super.key});
 
   @override
-  State<TasksScreen> createState() => _TasksScreenState();
+  State<TasksScreen> createState() => TasksScreenState();
 }
 
-class _TasksScreenState extends State<TasksScreen> {
+class TasksScreenState extends State<TasksScreen> {
   List<TaskModel> _tasks = [];
   final Set<String> _updatingTaskIds = {};
   bool _isLoading = true;
@@ -26,7 +26,7 @@ class _TasksScreenState extends State<TasksScreen> {
   @override
   void initState() {
     super.initState();
-    _loadTasks();
+    loadTasks();
   }
 
   String _formatError(Object e) {
@@ -56,7 +56,7 @@ class _TasksScreenState extends State<TasksScreen> {
     }
   }
 
-  Future<void> _loadTasks() async {
+  Future<void> loadTasks() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -195,7 +195,7 @@ class _TasksScreenState extends State<TasksScreen> {
               ),
               const SizedBox(height: 24),
               ElevatedButton.icon(
-                onPressed: _loadTasks,
+                onPressed: loadTasks,
                 icon: const Icon(Icons.refresh_rounded),
                 label: const Text('Thử lại'),
               ),
@@ -207,7 +207,7 @@ class _TasksScreenState extends State<TasksScreen> {
 
     if (_tasks.isEmpty) {
       return RefreshIndicator(
-        onRefresh: _loadTasks,
+        onRefresh: loadTasks,
         color: AppTheme.primaryColor,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -232,7 +232,7 @@ class _TasksScreenState extends State<TasksScreen> {
     final isAllCompleted = _tasks.every((t) => t.isCompleted);
 
     return RefreshIndicator(
-      onRefresh: _loadTasks,
+      onRefresh: loadTasks,
       color: AppTheme.primaryColor,
       child: ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -278,4 +278,6 @@ class _TasksScreenState extends State<TasksScreen> {
       ),
     );
   }
+
+  void reload() {}
 }
