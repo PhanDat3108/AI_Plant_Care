@@ -24,7 +24,7 @@ export function apiRoutes(db: Database, config: Config) {
   router.use("/me", profileRoutes(db));
   router.use("/garden", gardenRoutes(db, config)); // Truyền thêm config nếu gardenRoutes của bạn cần dùng authenticate
   router.use(careDataRoutes(db, config));
-  router.use(carePlanRoutes(db));
+  router.use(carePlanRoutes(db, config));
   router.use(schedulesRoutes(db));
   router.use(notificationsRoutes(db));
   router.use(careLogsRoutes(db));

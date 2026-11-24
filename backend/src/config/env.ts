@@ -24,6 +24,8 @@ export function readConfig(input: NodeJS.ProcessEnv) {
         .union([z.url({ protocol: /^https$/ }), z.literal("")])
         .optional(),
       SUPABASE_PUBLISHABLE_KEY: z.string().optional(),
+      SUPABASE_STORAGE_BUCKET: z.string().trim().default("plant-images"),
+      SUPABASE_SECRET_KEY: z.string().trim().default(""),
       GOOGLE_AUTH_REDIRECT_URL: z.union([z.url(), z.literal("")]).optional(),
       AUTH_REDIRECT_URL: z.union([z.url(), z.literal("")]).optional(),
       CRON_SECRET: z

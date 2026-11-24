@@ -17,8 +17,8 @@ export function gardenRoutes(db: Database, config?: Config): Router {
     router.use(authenticate(config));
   }
 
-  // Khởi tạo controller với kết nối database
-  const garden = gardenController(db);
+  // Khởi tạo controller với kết nối database và config
+  const garden = gardenController(db, config);
 
   /**
    * POST /

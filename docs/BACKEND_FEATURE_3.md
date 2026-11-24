@@ -45,7 +45,7 @@ API hỗ trợ các chế độ quét thông qua tham số `mode`:
 
 | Chế độ (`mode`) | Mục đích & Công nghệ | Mô tả hoạt động |
 | :--- | :--- | :--- |
-| `"identify"` *(mặc định)* | **Nhận diện loài**<br>*(Pl@ntNet API)* | Phân tích ảnh để tìm ra tên khoa học (`scientific_name`), tên thông thường (`common_name`), độ chính xác (`species_confidence`) và liên kết/tạo mới bản ghi trong từ điển thực vật `plant_species`. |
+| `"identify"` *(mặc định)* | **Nhận diện loài**<br>*(Pl@ntNet API)* | Phân tích ảnh để tìm ra tên khoa học (`scientific_name`), tên thông thường tiếng Việt (`common_name`), định dạng hiển thị `reported_species_name: "Tên tiếng Việt (Tên khoa học)"`, độ chính xác (`species_confidence`) và liên kết/tạo mới bản ghi trong từ điển thực vật `plant_species`. |
 | `"diagnose"` | **Chẩn đoán sâu bệnh**<br>*(Gemini Vision AI)* | Đánh giá tình trạng lá/thân cây, trả về trạng thái sức khỏe (`health_status`: `"healthy"`, `"suspected"`, `"unknown"`) cùng mảng danh sách triệu chứng, nguyên nhân và các bước điều trị cụ thể (`scan_findings`). |
 | `"both"` | **Kết hợp cả hai** | Chạy nhận diện loài trước, sau đó đưa thông tin loài vào prompt chẩn đoán của Gemini Vision để kết quả bệnh học có độ chuẩn xác cao nhất. |
 
@@ -118,12 +118,13 @@ Content-Disposition: form-data; name="request_id"
     "request_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
     "plant_id": null,
     "image_key": "scans/018f3a22-38d1-72ef-b570-5b4cf5796277/d9b4be11-2e29-4d61-b4d6-849c0953a918.jpg",
+    "image_url": "https://<supabase-url>/storage/v1/object/sign/plant-images/scans/...token=...",
     "mode": "identify",
     "source": "plantnet",
     "is_mock": false,
     "scanned_at": "2026-11-20T08:45:00.000Z",
     "species_id": "018f3a25-e5f8-7db0-b389-9e8c46ea4823",
-    "reported_species_name": "Epipremnum aureum",
+    "reported_species_name": "Trầu bà (Epipremnum aureum)",
     "species_confidence": 0.9452,
     "health_status": "unknown",
     "scan_findings": []
@@ -161,12 +162,13 @@ Content-Type: application/json
     "request_id": "8d3e2304-436f-47dc-9db8-500e28f11ec3",
     "plant_id": "9a7516d3-2f22-4876-b638-316239fb8c1a",
     "image_key": "scans/018f3a22-38d1-72ef-b570-5b4cf5796277/a18fcbb4-1b77-4b14-87cf-45371a53c9ff.jpg",
+    "image_url": "https://<supabase-url>/storage/v1/object/sign/plant-images/scans/...token=...",
     "mode": "diagnose",
     "source": "gemini",
     "is_mock": false,
     "scanned_at": "2026-11-20T08:46:12.000Z",
     "species_id": "018f3a25-e5f8-7db0-b389-9e8c46ea4823",
-    "reported_species_name": null,
+    "reported_species_name": "Trầu bà (Epipremnum aureum)",
     "species_confidence": null,
     "health_status": "suspected",
     "scan_findings": [
@@ -217,12 +219,13 @@ Lấy danh sách các lần quét của người dùng, sắp xếp mới nhất
       "request_id": "8d3e2304-436f-47dc-9db8-500e28f11ec3",
       "plant_id": "9a7516d3-2f22-4876-b638-316239fb8c1a",
       "image_key": "scans/018f3a22-38d1-72ef-b570-5b4cf5796277/a18fcbb4-1b77-4b14-87cf-45371a53c9ff.jpg",
+      "image_url": "https://<supabase-url>/storage/v1/object/sign/plant-images/scans/...token=...",
       "mode": "diagnose",
       "source": "gemini",
       "is_mock": false,
       "scanned_at": "2026-11-20T08:46:12.000Z",
       "species_id": "018f3a25-e5f8-7db0-b389-9e8c46ea4823",
-      "reported_species_name": null,
+      "reported_species_name": "Trầu bà (Epipremnum aureum)",
       "species_confidence": null,
       "health_status": "suspected"
     }
@@ -295,6 +298,8 @@ Content-Type: application/json
 
 ### Lợi ích của luồng này:
 - Người dùng **không phải tải lại ảnh lần thứ hai**, tiết kiệm băng thông và tăng tốc độ trải nghiệm.
+- **Bảo mật:** Backend kiểm tra quyền sở hữu `cover_image_key` đối chiếu với bảng `scans` của chính tài khoản đó (nếu truyền key của tài khoản khác sẽ bị từ chối với lỗi `400 INVALID_COVER_IMAGE`).
+- Response của `POST /api/v1/garden` sẽ tự động trả kèm **`cover_image_url`** (signed URL từ Supabase Storage) để Frontend hiển thị ngay ảnh đại diện cho cây mới.
 - Cây mới tạo sẽ tự động được liên kết với từ điển loài (`species_id`). Hệ thống sẽ tự động kích hoạt tạo lịch trình tưới nước, bón phân và kế hoạch chăm sóc chuẩn cho cây.
 
 ---

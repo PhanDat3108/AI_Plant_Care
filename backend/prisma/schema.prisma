@@ -77,10 +77,11 @@ model diseases {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model plant_species {
-  id                String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  scientific_name   String
-  common_name       String?
-  light_guide       String?
+  id                 String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  scientific_name    String
+  common_name        String?
+  common_name_locale String?
+  light_guide        String?
   soil_guide        String?
   water_guide       String?
   temperature_guide String?

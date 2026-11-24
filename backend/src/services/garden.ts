@@ -2,8 +2,14 @@ import { Prisma } from "../generated/prisma/client.js";
 import type { plantsModel } from "../generated/prisma/models/plants.js";
 import { createDatabase, type Database } from "../config/database.js";
 import { HttpError } from "../middlewares/errors.js";
+import type { Config } from "../config/env.js";
+import { plantImageStorage } from "./plant-image-storage.js";
 
 export type Plant = plantsModel;
+
+export type PlantWithImageUrl = Plant & {
+  cover_image_url?: string | null;
+};
 
 export interface AddPlantInput {
   nickname: string;
@@ -40,7 +46,8 @@ export async function addPlant(
   ownerId: string,
   data: AddPlantInput,
   client?: Database,
-): Promise<Plant> {
+  config?: Config,
+): Promise<PlantWithImageUrl> {
   if (!ownerId || !ownerId.trim()) {
     throw new HttpError(400, "INVALID_INPUT", "ownerId không được để trống.");
   }
@@ -62,20 +69,51 @@ export async function addPlant(
   }
 
   const db = getDatabase(client);
+  const normalizedCoverImageKey = data.cover_image_key?.trim() || null;
+
+  // Kiểm tra ảnh bìa thuộc về người dùng nếu có truyền cover_image_key
+  if (normalizedCoverImageKey && db.scans?.findFirst) {
+    const scan = await db.scans.findFirst({
+      where: {
+        image_key: normalizedCoverImageKey,
+        owner_id: ownerId.trim(),
+      },
+      select: { id: true },
+    });
+    if (!scan) {
+      throw new HttpError(
+        400,
+        "INVALID_COVER_IMAGE",
+        "Ảnh bìa không hợp lệ hoặc không thuộc về bạn.",
+      );
+    }
+  }
 
   try {
-    return await db.plants.create({
+    const plant = await db.plants.create({
       data: {
         owner_id: ownerId.trim(),
         nickname: data.nickname.trim(),
         species_id: data.species_id?.trim() || null,
-        cover_image_key: data.cover_image_key?.trim() || null,
+        cover_image_key: normalizedCoverImageKey,
         latitude: data.latitude ?? null,
         longitude: data.longitude ?? null,
         region_name: data.region_name || null,
         environment: data.environment ?? "unknown",
       },
     });
+
+    if (!config) {
+      return plant;
+    }
+
+    let cover_image_url: string | null = null;
+    if (plant.cover_image_key) {
+      const storage = plantImageStorage(config);
+      cover_image_url = await storage.createSignedUrl(plant.cover_image_key);
+    }
+
+    return { ...plant, cover_image_url };
   } catch (error) {
     if (error instanceof HttpError) throw error;
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -101,7 +139,8 @@ export async function addPlant(
 export async function getGardenPlants(
   ownerId: string,
   client?: Database,
-): Promise<Plant[]> {
+  config?: Config,
+): Promise<PlantWithImageUrl[]> {
   if (!ownerId || !ownerId.trim()) {
     throw new HttpError(400, "INVALID_INPUT", "ownerId không được để trống.");
   }
@@ -109,10 +148,21 @@ export async function getGardenPlants(
   const db = getDatabase(client);
 
   try {
-    return await db.plants.findMany({
+    const plants = await db.plants.findMany({
       where: { owner_id: ownerId.trim() },
       orderBy: [{ created_at: "desc" }, { id: "desc" }],
     });
+
+    if (!config) {
+      return plants;
+    }
+
+    const storage = plantImageStorage(config);
+    const urlMap = await storage.createSignedUrls(plants.map((p) => p.cover_image_key));
+    return plants.map((plant) => ({
+      ...plant,
+      cover_image_url: plant.cover_image_key ? (urlMap.get(plant.cover_image_key) ?? null) : null,
+    }));
   } catch (error) {
     if (error instanceof HttpError) throw error;
     throw new HttpError(
@@ -228,15 +278,26 @@ export async function removePlant(
   }
 }
 
-export function gardenService(db: Database) {
+export function gardenService(db: Database, config?: Config) {
   return {
-    list(ownerId: string, skip: number, take: number) {
-      return db.plants.findMany({
+    async list(ownerId: string, skip: number, take: number): Promise<PlantWithImageUrl[]> {
+      const plants = await db.plants.findMany({
         where: { owner_id: ownerId },
         skip,
         take,
         orderBy: [{ created_at: "desc" }, { id: "desc" }],
       });
+
+      if (config) {
+        const storage = plantImageStorage(config);
+        const urlMap = await storage.createSignedUrls(plants.map((p) => p.cover_image_key));
+        return plants.map((p) => ({
+          ...p,
+          cover_image_url: p.cover_image_key ? (urlMap.get(p.cover_image_key) ?? null) : null,
+        }));
+      }
+
+      return plants.map((p) => ({ ...p, cover_image_url: null }));
     },
     async detail(ownerId: string, id: string) {
       const plant = await db.plants.findFirst({
@@ -251,13 +312,20 @@ export function gardenService(db: Database) {
             where: { id: plant.reference_image_id },
           })
         : null;
-      return { ...plant, species, referenceImage };
+
+      let cover_image_url: string | null = null;
+      if (config && plant.cover_image_key) {
+        const storage = plantImageStorage(config);
+        cover_image_url = await storage.createSignedUrl(plant.cover_image_key);
+      }
+
+      return { ...plant, cover_image_url, species, referenceImage };
     },
     addPlant(ownerId: string, data: AddPlantInput) {
-      return addPlant(ownerId, data, db);
+      return addPlant(ownerId, data, db, config);
     },
     getGardenPlants(ownerId: string) {
-      return getGardenPlants(ownerId, db);
+      return getGardenPlants(ownerId, db, config);
     },
     updatePlantNickname(plantId: string, ownerId: string, newNickname: string) {
       return updatePlantNickname(plantId, ownerId, newNickname, db);

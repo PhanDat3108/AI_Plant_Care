@@ -1,6 +1,7 @@
 import type { RequestHandler } from "express";
 import { z } from "zod";
 import type { Database } from "../config/database.js";
+import type { Config } from "../config/env.js";
 import { success } from "../middlewares/errors.js";
 import { carePlanner } from "../services/care-planner.js";
 import { careTaskService } from "../services/care-tasks.js";
@@ -11,9 +12,10 @@ import {
 export function carePlanController(
   db: Database,
   weather: WeatherProvider = openMeteoProvider(),
+  config?: Config,
 ): { sync: RequestHandler; tasks: RequestHandler } {
   const planner = carePlanner(db, weather);
-  const tasks = careTaskService(db);
+  const tasks = careTaskService(db, config);
   return {
     async sync(req, res) {
       z.strictObject({}).parse(req.body ?? {});
