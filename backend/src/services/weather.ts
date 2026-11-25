@@ -72,7 +72,10 @@ export function openMeteoProvider(
             precipitation_unit: "mm",
           }).toString();
           const r = await fetcher(url, { signal: AbortSignal.timeout(6000) });
-          if (!r.ok) throw new Error("weather unavailable");
+          if (!r.ok) {
+            console.warn("WEATHER_HTTP_ERROR", r.status);
+            throw new Error("weather unavailable");
+          }
           const { daily } = responseSchema.parse(await r.json());
           if (
             [
@@ -93,7 +96,9 @@ export function openMeteoProvider(
               temperature_max_c: daily.temperature_2m_max[i],
             })),
           };
-        } catch {
+        } catch (error) {
+          // Only log the error class, never coordinates or provider response bodies.
+          console.warn("WEATHER_LOOKUP_FAILED", error instanceof Error ? error.name : "UnknownError");
           /* Keep the previously scheduled task unchanged on timeout/errors. */
         }
         if (cache.size >= 500) cache.delete(cache.keys().next().value!);

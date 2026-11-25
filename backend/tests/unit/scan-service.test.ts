@@ -70,6 +70,27 @@ describe("Scan Service", () => {
   });
 
   describe("scanService logic", () => {
+    it.each(["diagnose", "both"])("%s saves findings with positive database positions", async (mode) => {
+      mockUpload.mockResolvedValue("scans/user-1/photo.jpg");
+      mockCreateSignedUrl.mockResolvedValue("https://signed.url/photo.jpg");
+      const saved = { id: "scan-1", image_key: "scans/user-1/photo.jpg", scan_findings: [] };
+      const tx = {
+        scans: { create: vi.fn().mockResolvedValue(saved), findFirst: vi.fn().mockResolvedValue(saved) },
+        scan_findings: { createMany: vi.fn().mockResolvedValue({ count: 1 }) },
+      };
+      const db = {
+        scans: { findUnique: vi.fn().mockResolvedValue(null) },
+        $queryRaw: vi.fn().mockResolvedValue([{ id: "species-1", scientific_name: "Epipremnum aureum", common_name: "Trầu bà", common_name_locale: "vi" }]),
+        $transaction: vi.fn(async (fn: (client: typeof tx) => unknown) => fn(tx)),
+      };
+      await scanService(db as unknown as Parameters<typeof scanService>[0], baseConfig as Config).create("user-1", {
+        mode, imageBuffer: Buffer.from("image"), mimeType: "image/jpeg", request_id: "req-1",
+      });
+      const findings = tx.scan_findings.createMany.mock.calls[0][0].data;
+      expect(findings.length).toBeGreaterThan(0);
+      expect(findings.map((f: { position: number }) => f.position)).toEqual(findings.map((_: unknown, i: number) => i + 1));
+    });
+
     it("idempotency check: trả về bản ghi cũ và không upload ảnh mới nếu request_id đã tồn tại", async () => {
       const existingScan = {
         id: "scan-1",

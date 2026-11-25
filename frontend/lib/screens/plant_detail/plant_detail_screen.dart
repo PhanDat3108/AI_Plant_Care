@@ -5,6 +5,7 @@ import '../../models/plant_model.dart';
 import '../../services/care_log_service.dart';
 import '../../services/plant_care_service.dart';
 import '../../theme/app_theme.dart';
+import '../ai_scan/scan_screen.dart';
 import 'plant_detail_dialogs.dart';
 import 'plant_detail_header.dart';
 import 'plant_detail_tabs.dart';
@@ -180,11 +181,13 @@ class _PlantDetailScreenState extends State<PlantDetailScreen>
         waterReminderTime: waterTime,
         fertilizeReminderTime: fertilizeTime,
         isWateringReminderOn:
-            waterSchedule?.enabled ?? base?.isWateringReminderOn ?? false,
+            waterSchedule?.enabled ??
+            (schedules == null ? base?.isWateringReminderOn ?? false : false),
         isFertilizingReminderOn:
             fertilizeSchedule?.enabled ??
-            base?.isFertilizingReminderOn ??
-            false,
+            (schedules == null
+                ? base?.isFertilizingReminderOn ?? false
+                : false),
         logs: careLogs,
       );
       _careDataNotice = careDataNotice;
@@ -338,18 +341,20 @@ class _PlantDetailScreenState extends State<PlantDetailScreen>
             wateringFrequencyDays:
                 water?.intervalDays ?? _plant!.wateringFrequencyDays,
             waterReminderTime: water?.localTime ?? _plant!.waterReminderTime,
-            isWateringReminderOn:
-                water?.enabled ?? _plant!.isWateringReminderOn,
+            isWateringReminderOn: water?.enabled ?? false,
             fertilizingFrequencyDays:
                 fertilize?.intervalDays ?? _plant!.fertilizingFrequencyDays,
             fertilizeReminderTime:
                 fertilize?.localTime ?? _plant!.fertilizeReminderTime,
-            isFertilizingReminderOn:
-                fertilize?.enabled ?? _plant!.isFertilizingReminderOn,
+            isFertilizingReminderOn: fertilize?.enabled ?? false,
           );
         }
       });
-      _showMessage('Đã đồng bộ lịch chăm sóc theo thời tiết!');
+      _showMessage(
+        result.warnings.isEmpty
+            ? 'Đã đồng bộ lịch chăm sóc.'
+            : 'Đã kiểm tra lịch. Xem lưu ý bên dưới để hoàn tất thiết lập.',
+      );
     } catch (e) {
       _showMessage(_formatError(e));
     } finally {
@@ -491,6 +496,26 @@ class _PlantDetailScreenState extends State<PlantDetailScreen>
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text('Chi tiết cây'),
+        actions: [
+          IconButton(
+            tooltip: 'Quét bệnh cho cây này',
+            icon: const Icon(Icons.document_scanner_outlined),
+            onPressed: _isLoading
+                ? null
+                : () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ScanScreen(
+                          plantId: widget.plantId,
+                          initialDiseaseMode: true,
+                        ),
+                      ),
+                    );
+                    if (mounted) await _loadPlantData();
+                  },
+          ),
+        ],
       ),
       body: _buildBodyContent(),
     );

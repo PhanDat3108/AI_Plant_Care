@@ -55,7 +55,10 @@ class PlantInstructionTab extends StatelessWidget {
                 padding: const EdgeInsets.all(12),
                 child: Row(
                   children: [
-                    const Icon(Icons.info_outline_rounded, color: Colors.orange),
+                    const Icon(
+                      Icons.info_outline_rounded,
+                      color: Colors.orange,
+                    ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
@@ -182,9 +185,9 @@ class PlantReminderTab extends StatelessWidget {
       case 'WEATHER_UNAVAILABLE_KEEP_EXISTING_DUE':
         return 'Tạm thời không đọc được dữ liệu thời tiết, giữ nguyên hạn hiện tại.';
       case 'MISSING_WATER_INTERVAL':
-        return 'Loài cây thiếu chu kỳ tưới nước mặc định.';
+        return 'Chưa có lịch tưới và chu kỳ tham khảo. Nhấn mục Tưới nước để đặt số ngày, giờ và lưu lịch.';
       case 'MISSING_FERTILIZE_INTERVAL':
-        return 'Loài cây thiếu chu kỳ bón phân mặc định.';
+        return 'Chưa có lịch bón phân và chu kỳ tham khảo. Nhấn mục Bón phân để đặt số ngày, giờ và lưu lịch.';
       default:
         return code;
     }
@@ -382,10 +385,7 @@ class _DeletePlantButton extends StatelessWidget {
   final bool disabled;
   final VoidCallback onPressed;
 
-  const _DeletePlantButton({
-    required this.disabled,
-    required this.onPressed,
-  });
+  const _DeletePlantButton({required this.disabled, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {

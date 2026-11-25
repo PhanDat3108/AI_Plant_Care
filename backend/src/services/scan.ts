@@ -797,7 +797,7 @@ export function scanService(db: Database, config: Config) {
         await tx.scan_findings.createMany({
           data: diagnoseResult.findings.map((f, i) => ({
             scan_id: created.id,
-            position: i,
+            position: i + 1,
             reported_name: f.reported_name,
             confidence: f.confidence ?? null,
             symptoms: f.symptoms ?? null,
@@ -903,7 +903,7 @@ export function scanService(db: Database, config: Config) {
         await tx.scan_findings.createMany({
           data: diagnoseResult.findings.map((f, i) => ({
             scan_id: created.id,
-            position: i,
+            position: i + 1,
             reported_name: f.reported_name,
             confidence: f.confidence ?? null,
             symptoms: f.symptoms ?? null,
