@@ -28,8 +28,8 @@ const createBodySchema = z.object({
   }),
   note: z.string().trim().optional().nullable(),
   performed_at: z.union([z.string(), z.date()]).optional().nullable(),
-  request_id: z.string().trim().optional().nullable(),
-  task_id: z.string().trim().optional().nullable(),
+  request_id: z.uuid().optional().nullable(),
+  task_id: z.uuid().optional().nullable(),
 });
 
 const listQuerySchema = z.object({

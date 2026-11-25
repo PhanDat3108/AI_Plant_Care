@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
+  callPlantNet,
   formatSpeciesDisplayName,
   translateSpeciesToVietnamese,
   scanService,
@@ -173,5 +174,21 @@ describe("Scan Service", () => {
 
       expect(mockRemove).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe("PlantNet locale regression", () => {
+  it("requests English from PlantNet before Vietnamese enrichment", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ results: [] }), { status: 200 }),
+    );
+    try {
+      await expect(callPlantNet(Buffer.from("test"), "image/jpeg", "all", "test-key"))
+        .rejects.toMatchObject({ code: "PLANTNET_NO_RESULT" });
+      const url = new URL(String(fetchMock.mock.calls[0][0]));
+      expect(url.searchParams.get("lang")).toBe("en");
+    } finally {
+      fetchMock.mockRestore();
+    }
   });
 });

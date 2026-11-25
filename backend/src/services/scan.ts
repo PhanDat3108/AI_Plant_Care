@@ -177,7 +177,7 @@ export async function callPlantNet(
   apiKey: string,
   organ = "auto",
 ): Promise<PlantNetResult> {
-  const url = `https://my-api.plantnet.org/v2/identify/${project}?api-key=${apiKey}&lang=vi`;
+  const url = `https://my-api.plantnet.org/v2/identify/${project}?api-key=${apiKey}&lang=en`;
   const formData = new FormData();
   const blob = new Blob([new Uint8Array(imageBuffer)], { type: mimeType });
   formData.append("images", blob, `plant.${MIME_TO_EXT[mimeType as AllowedMimeType] ?? "jpg"}`);

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../core/api_exception.dart';
 import '../../models/task_model.dart';
@@ -88,8 +89,7 @@ class TasksScreenState extends State<TasksScreen> {
 
     try {
       if (newValue) {
-        final requestId =
-            'task-${task.id}-${DateTime.now().millisecondsSinceEpoch}';
+        final requestId = const Uuid().v4();
         await CareLogService.createCareLog(
           plantId: task.plantId,
           kind: _taskTypeToKind(task.type),
