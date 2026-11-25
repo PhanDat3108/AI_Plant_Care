@@ -31,9 +31,9 @@ class ScanFindingItem {
     final rawSteps = json['treatment_steps'];
     final steps = rawSteps is List
         ? rawSteps
-            .map((e) => e.toString().trim())
-            .where((e) => e.isNotEmpty)
-            .toList()
+              .map((e) => e.toString().trim())
+              .where((e) => e.isNotEmpty)
+              .toList()
         : <String>[];
 
     return ScanFindingItem(
@@ -52,6 +52,7 @@ class ScanResponse {
   final String source;
   final bool isMock;
   final String imageKey;
+  final String imageUrl;
   final String? speciesId;
   final String? reportedSpeciesName;
   final double? speciesConfidence;
@@ -64,6 +65,7 @@ class ScanResponse {
     required this.source,
     required this.isMock,
     required this.imageKey,
+    this.imageUrl = '',
     this.speciesId,
     this.reportedSpeciesName,
     this.speciesConfidence,
@@ -75,9 +77,11 @@ class ScanResponse {
     final rawFindings = json['scan_findings'];
     final findings = rawFindings is List
         ? rawFindings
-            .whereType()
-            .map((m) => ScanFindingItem.fromJson(Map<String, dynamic>.from(m)))
-            .toList()
+              .whereType()
+              .map(
+                (m) => ScanFindingItem.fromJson(Map<String, dynamic>.from(m)),
+              )
+              .toList()
         : <ScanFindingItem>[];
 
     return ScanResponse(
@@ -86,6 +90,7 @@ class ScanResponse {
       source: json['source']?.toString() ?? '',
       isMock: json['is_mock'] == true,
       imageKey: json['image_key']?.toString() ?? '',
+      imageUrl: json['image_url']?.toString() ?? '',
       speciesId: json['species_id']?.toString(),
       reportedSpeciesName: json['reported_species_name']?.toString().trim(),
       speciesConfidence: _parseDouble(json['species_confidence']),
@@ -127,9 +132,10 @@ class ScanResponse {
       nickname: displayName,
       scientificName: scientific,
       commonName: displayName,
-      imageUrl: imageKey,
+      imageUrl: imageUrl,
       healthStatus: isSick ? HealthStatus.sick : HealthStatus.healthy,
-      diseaseName: isSick && firstFinding != null && firstFinding.reportedName.isNotEmpty
+      diseaseName:
+          isSick && firstFinding != null && firstFinding.reportedName.isNotEmpty
           ? firstFinding.reportedName
           : null,
       symptoms: symptomList.isEmpty ? null : symptomList,

@@ -1,3 +1,5 @@
+import '../../core/plant_image_url.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../core/api_exception.dart';
@@ -131,7 +133,9 @@ class _PlantDetailScreenState extends State<PlantDetailScreen>
     final fertilizeSchedule = schedules?.findByKind('fertilize');
 
     final nickname = gardenPlant?['nickname']?.toString().trim();
-    final imageKey = gardenPlant?['cover_image_key']?.toString().trim();
+    final coverUrl = gardenPlant == null
+        ? base?.imageUrl ?? ''
+        : plantImageUrl(gardenPlant);
     final speciesId = gardenPlant?['species_id']?.toString().trim();
     final environment = gardenPlant?['environment']?.toString().trim();
 
@@ -150,9 +154,7 @@ class _PlantDetailScreenState extends State<PlantDetailScreen>
             : (base?.nickname ?? careData?.commonName ?? 'Cây của tôi'),
         scientificName: careData?.scientificName ?? base?.scientificName ?? '',
         commonName: careData?.commonName ?? base?.commonName ?? '',
-        imageUrl: (imageKey != null && imageKey.isNotEmpty)
-            ? imageKey
-            : (base?.imageUrl ?? ''),
+        imageUrl: coverUrl,
         healthStatus: base?.healthStatus ?? HealthStatus.healthy,
         diseaseName: base?.diseaseName,
         symptoms: base?.symptoms,

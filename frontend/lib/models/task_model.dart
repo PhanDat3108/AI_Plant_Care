@@ -1,3 +1,5 @@
+import '../core/plant_image_url.dart';
+
 enum TaskType {
   water, // Tưới nước
   fertilize, // Bón phân
@@ -38,24 +40,15 @@ class TaskModel {
     final plant = schedule['plants'] is Map
         ? Map<String, dynamic>.from(schedule['plants'] as Map)
         : <String, dynamic>{};
-    final refImage = plant['reference_images'] is Map
-        ? Map<String, dynamic>.from(plant['reference_images'] as Map)
-        : <String, dynamic>{};
-
     final state = json['state']?.toString() ?? 'pending';
     final kind = json['kind']?.toString() ?? schedule['kind']?.toString();
     final reasonRaw = json['adjustment_reason']?.toString().trim();
-
-    final avatarUrl =
-        refImage['image_url']?.toString() ??
-        plant['cover_image_key']?.toString() ??
-        '';
 
     return TaskModel(
       id: json['id']?.toString() ?? '',
       plantId: plant['id']?.toString() ?? json['plant_id']?.toString() ?? '',
       plantNickname: plant['nickname']?.toString() ?? 'Cây chưa đặt tên',
-      plantAvatar: avatarUrl,
+      plantAvatar: plantImageUrl(plant),
       type: _mapKindToType(kind),
       isCompleted: state == 'done',
       state: state,

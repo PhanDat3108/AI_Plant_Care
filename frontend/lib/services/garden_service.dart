@@ -1,3 +1,4 @@
+import '../core/plant_image_url.dart';
 import '../core/api_exception.dart';
 import '../models/plant_model.dart';
 import 'dio_client.dart';
@@ -33,14 +34,12 @@ class GardenService {
   }
 
   static PlantModel _fromJson(Map<String, dynamic> j) {
-    final cover = (j['cover_image_key'] as String?) ?? '';
     return PlantModel(
       id: (j['id'] ?? '').toString(),
       nickname: (j['nickname'] ?? 'Cây chưa đặt tên').toString(),
       scientificName: '',
       commonName: '',
-      // cover_image_key là khóa lưu trữ, chỉ hiển thị khi đã là URL đầy đủ.
-      imageUrl: cover.startsWith('http') ? cover : '',
+      imageUrl: plantImageUrl(j),
       healthStatus: HealthStatus.healthy,
       sunlightInfo: '',
       waterInfo: '',

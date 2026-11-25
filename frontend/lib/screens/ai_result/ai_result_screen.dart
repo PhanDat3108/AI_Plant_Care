@@ -61,7 +61,9 @@ class _AiResultScreenState extends State<AiResultScreen> {
     var selectedCity = 'Hà Nội';
     String? errorText;
 
-    return showDialog<({String nickname, String environment, double latitude, double longitude})>(
+    return showDialog<
+      ({String nickname, String environment, double latitude, double longitude})
+    >(
       context: context,
       builder: (dialogContext) {
         return StatefulBuilder(
@@ -193,9 +195,7 @@ class _AiResultScreenState extends State<AiResultScreen> {
     try {
       final rawCoverKey = (widget.coverImageKey?.trim().isNotEmpty ?? false)
           ? widget.coverImageKey!.trim()
-          : (widget.plant.imageUrl.trim().isNotEmpty
-                ? widget.plant.imageUrl.trim()
-                : null);
+          : null;
 
       final created = await PlantCareService.saveScannedPlant(
         nickname: input.nickname,
@@ -203,7 +203,7 @@ class _AiResultScreenState extends State<AiResultScreen> {
         coverImageKey: rawCoverKey,
         environment: input.environment,
         latitude: input.latitude,
-        longitude: input.longitude
+        longitude: input.longitude,
       );
 
       final newPlantId = created['id']?.toString();
