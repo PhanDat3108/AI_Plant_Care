@@ -15,13 +15,21 @@ export function scheduleService(db: Database) {
         where: { id: plantId, owner_id: ownerId },
         select: {
           profiles: { select: { timezone: true } },
-          care_schedules: { orderBy: { kind: "asc" } },
+          care_schedules: {
+            orderBy: { kind: "asc" },
+            include: { care_tasks: {
+              where: { state: "pending" },
+              orderBy: { due_at: "asc" },
+              take: 1,
+            } },
+          },
         },
       });
       if (!plant) throw missing();
       return {
         timezone: plant.profiles.timezone,
         items: plant.care_schedules.map(serializeSchedule),
+        tasks: plant.care_schedules.filter((s) => s.enabled).flatMap((s) => s.care_tasks),
       };
     },
     async save(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/api_exception.dart';
 import '../../models/plant_model.dart';
+import '../../models/task_model.dart';
 import '../../services/care_log_service.dart';
 import '../../services/plant_care_service.dart';
 import '../../theme/app_theme.dart';
@@ -38,6 +39,10 @@ class _PlantDetailScreenState extends State<PlantDetailScreen>
   String? _errorMessage;
   String? _careDataNotice;
   List<String> _syncWarnings = [];
+  List<TaskModel> _scheduledTasks = [];
+  String? _syncSummary;
+  bool _hasWaterSchedule = false;
+  bool _hasFertilizeSchedule = false;
 
   @override
   void initState() {
@@ -190,6 +195,11 @@ class _PlantDetailScreenState extends State<PlantDetailScreen>
                 : false),
         logs: careLogs,
       );
+      _scheduledTasks = schedules?.tasks ?? [];
+      _hasWaterSchedule = waterSchedule != null;
+      _hasFertilizeSchedule = fertilizeSchedule != null;
+      _syncSummary = null;
+      _syncWarnings = [];
       _careDataNotice = careDataNotice;
       _isLoading = false;
     });
@@ -248,7 +258,7 @@ class _PlantDetailScreenState extends State<PlantDetailScreen>
     required String localTime,
     required bool enabled,
   }) async {
-    if (_isSavingSchedule || _plant == null) return;
+    if (_isSavingSchedule || _isSyncingPlan || _plant == null) return;
     setState(() => _isSavingSchedule = true);
 
     try {
@@ -285,7 +295,16 @@ class _PlantDetailScreenState extends State<PlantDetailScreen>
                 fertilizeReminderTime: updated.localTime,
                 isFertilizingReminderOn: updated.enabled,
               );
-        if (syncResult != null) _syncWarnings = syncResult.warnings;
+        if (isWater) {
+          _hasWaterSchedule = true;
+        } else {
+          _hasFertilizeSchedule = true;
+        }
+        _scheduledTasks = syncResult?.tasks ?? [];
+        _syncWarnings = syncResult?.warnings ?? [];
+        _syncSummary = syncResult == null
+            ? 'Đã lưu lịch, nhưng chưa tính được ngày nhắc tiếp theo. Hãy bấm đồng bộ để thử lại.'
+            : _describeSync(syncResult);
       });
       _showMessage(
         isWater ? 'Đã lưu lịch tưới nước!' : 'Đã lưu lịch bón phân!',
@@ -323,7 +342,7 @@ class _PlantDetailScreenState extends State<PlantDetailScreen>
   }
 
   Future<void> _syncCarePlanManually() async {
-    if (_isSyncingPlan) return;
+    if (_isSyncingPlan || _isSavingSchedule) return;
     setState(() => _isSyncingPlan = true);
 
     try {
@@ -336,6 +355,10 @@ class _PlantDetailScreenState extends State<PlantDetailScreen>
 
       setState(() {
         _syncWarnings = result.warnings;
+        _scheduledTasks = result.tasks;
+        _hasWaterSchedule = water != null;
+        _hasFertilizeSchedule = fertilize != null;
+        _syncSummary = _describeSync(result);
         if (_plant != null) {
           _plant = _plant!.copyWith(
             wateringFrequencyDays:
@@ -350,16 +373,28 @@ class _PlantDetailScreenState extends State<PlantDetailScreen>
           );
         }
       });
-      _showMessage(
-        result.warnings.isEmpty
-            ? 'Đã đồng bộ lịch chăm sóc.'
-            : 'Đã kiểm tra lịch. Xem lưu ý bên dưới để hoàn tất thiết lập.',
-      );
+      _showMessage(_syncSummary!);
     } catch (e) {
       _showMessage(_formatError(e));
     } finally {
       if (mounted) setState(() => _isSyncingPlan = false);
     }
+  }
+
+  String _describeSync(CarePlanSyncResult result) {
+    if (result.warnings.isNotEmpty) {
+      return 'Đã kiểm tra lịch; còn lưu ý cần xem bên dưới.';
+    }
+    if (result.tasks.isEmpty) {
+      return 'Không có lịch nhắc đang hoạt động. Hãy tạo hoặc bật lịch.';
+    }
+    if (result.tasks.any((t) => t.adjustmentReason != null)) {
+      return 'Lịch nhắc đang được điều chỉnh theo thời tiết. Xem ngày nhắc và lý do bên dưới.';
+    }
+    if (result.weatherSource != null) {
+      return 'Đã kiểm tra thời tiết; lịch nhắc hiện giữ theo chu kỳ đã đặt.';
+    }
+    return 'Đã tính lịch theo chu kỳ đã đặt; không áp dụng điều chỉnh thời tiết.';
   }
 
   // --- Hành động: Nhật ký chăm sóc ---
@@ -607,6 +642,10 @@ class _PlantDetailScreenState extends State<PlantDetailScreen>
                 isSyncingPlan: _isSyncingPlan,
                 isMutatingPlant: _isMutatingPlant,
                 syncWarnings: _syncWarnings,
+                tasks: _scheduledTasks,
+                syncSummary: _syncSummary,
+                hasWaterSchedule: _hasWaterSchedule,
+                hasFertilizeSchedule: _hasFertilizeSchedule,
                 onRefresh: _loadPlantData,
                 onToggleWater: (val) => _saveSchedule(
                   isWater: true,

@@ -1,3 +1,5 @@
+import '../../models/task_model.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../models/plant_model.dart';
@@ -150,6 +152,10 @@ class PlantReminderTab extends StatelessWidget {
   final bool isSyncingPlan;
   final bool isMutatingPlant;
   final List<String> syncWarnings;
+  final List<TaskModel> tasks;
+  final String? syncSummary;
+  final bool hasWaterSchedule;
+  final bool hasFertilizeSchedule;
   final Future<void> Function() onRefresh;
   final ValueChanged<bool> onToggleWater;
   final ValueChanged<bool> onToggleFertilize;
@@ -165,6 +171,10 @@ class PlantReminderTab extends StatelessWidget {
     required this.isSyncingPlan,
     required this.isMutatingPlant,
     required this.syncWarnings,
+    this.tasks = const [],
+    this.syncSummary,
+    this.hasWaterSchedule = true,
+    this.hasFertilizeSchedule = true,
     required this.onRefresh,
     required this.onToggleWater,
     required this.onToggleFertilize,
@@ -173,6 +183,13 @@ class PlantReminderTab extends StatelessWidget {
     required this.onSyncPlan,
     required this.onDeletePlant,
   });
+
+  String _formatDue(DateTime? date) {
+    if (date == null) return 'Chưa xác định';
+    final d = date.toLocal();
+    String two(int value) => value.toString().padLeft(2, '0');
+    return '${two(d.day)}/${two(d.month)}/${d.year}, ${two(d.hour)}:${two(d.minute)}';
+  }
 
   String _warningLabel(String code) {
     switch (code) {
@@ -206,25 +223,69 @@ class PlantReminderTab extends StatelessWidget {
             icon: Icons.water_drop_rounded,
             iconColor: Colors.blue,
             title: 'Tưới nước',
-            subtitle:
-                'Mỗi ${plant.wateringFrequencyDays} ngày, lúc ${plant.effectiveWaterTime}',
+            subtitle: hasWaterSchedule
+                ? 'Mỗi ${plant.wateringFrequencyDays} ngày, lúc ${plant.effectiveWaterTime}'
+                : 'Chưa tạo lịch — chọn Chỉnh sửa',
             value: plant.isWateringReminderOn,
-            onEdit: isSavingSchedule ? null : onEditWater,
-            onChanged: isSavingSchedule ? null : onToggleWater,
+            onEdit: (isSavingSchedule || isSyncingPlan) ? null : onEditWater,
+            onChanged: (isSavingSchedule || isSyncingPlan)
+                ? null
+                : onToggleWater,
           ),
           ToggleReminderCard(
             icon: Icons.science_rounded,
             iconColor: Colors.orange,
             title: 'Bón phân',
-            subtitle:
-                'Mỗi ${plant.fertilizingFrequencyDays} ngày, lúc ${plant.effectiveFertilizeTime}',
+            subtitle: hasFertilizeSchedule
+                ? 'Mỗi ${plant.fertilizingFrequencyDays} ngày, lúc ${plant.effectiveFertilizeTime}'
+                : 'Chưa tạo lịch — chọn Chỉnh sửa',
             value: plant.isFertilizingReminderOn,
-            onEdit: isSavingSchedule ? null : onEditFertilize,
-            onChanged: isSavingSchedule ? null : onToggleFertilize,
+            onEdit: (isSavingSchedule || isSyncingPlan)
+                ? null
+                : onEditFertilize,
+            onChanged: (isSavingSchedule || isSyncingPlan)
+                ? null
+                : onToggleFertilize,
           ),
+          if (syncSummary != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Text(syncSummary!),
+            ),
+          for (final task in tasks)
+            if ((task.type == TaskType.water && plant.isWateringReminderOn) ||
+                (task.type == TaskType.fertilize &&
+                    plant.isFertilizingReminderOn))
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        task.type == TaskType.water
+                            ? 'Lần nhắc tưới tiếp theo'
+                            : 'Lần nhắc bón phân tiếp theo',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      Text(_formatDue(task.dueAt)),
+                      if (task.adjustmentReason != null) ...[
+                        Text('Lịch gốc: ${_formatDue(task.originalDueAt)}'),
+                        Text(task.adjustmentReason!),
+                      ] else
+                        const Text('Theo chu kỳ đã đặt.'),
+                    ],
+                  ),
+                ),
+              ),
+          if (tasks.isNotEmpty)
+            const Text(
+              'Ngày giờ hiển thị theo múi giờ điện thoại.',
+              style: TextStyle(fontSize: 12),
+            ),
           const SizedBox(height: 8),
           OutlinedButton.icon(
-            onPressed: isSyncingPlan ? null : onSyncPlan,
+            onPressed: (isSyncingPlan || isSavingSchedule) ? null : onSyncPlan,
             icon: isSyncingPlan
                 ? const SizedBox(
                     width: 16,
@@ -232,12 +293,19 @@ class PlantReminderTab extends StatelessWidget {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.cloud_sync_rounded),
-            label: const Text('Đồng bộ lịch theo thời tiết (Open-Meteo)'),
+            label: const Text('Đồng bộ lịch theo thời tiết'),
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 12),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
               ),
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: Text(
+              'Đồng bộ thời tiết điều chỉnh ngày nhắc tưới cho cây ngoài trời khi cần; không đổi chu kỳ và giờ bạn đã đặt. Lịch bón phân giữ nguyên.',
+              style: TextStyle(color: AppTheme.subTextColor, fontSize: 13),
             ),
           ),
           if (syncWarnings.isNotEmpty) ...[

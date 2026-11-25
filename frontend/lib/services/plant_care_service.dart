@@ -1,3 +1,4 @@
+import '../models/task_model.dart';
 import 'dio_client.dart';
 
 class CareScheduleItem {
@@ -29,10 +30,12 @@ class CareScheduleItem {
 class CareSchedulesResult {
   final String timezone;
   final List<CareScheduleItem> items;
+  final List<TaskModel> tasks;
 
   const CareSchedulesResult({
     required this.timezone,
     required this.items,
+    this.tasks = const [],
   });
 
   CareScheduleItem? findByKind(String kind) {
@@ -54,7 +57,8 @@ class PlantCareDataResult {
   final String? soilGuide;
   final String? temperatureGuide;
   final String? fertilizerGuide;
-  final String? draftStatus; // generating | draft | approved | rejected | failed
+  final String?
+  draftStatus; // generating | draft | approved | rejected | failed
   final bool isMockDraft;
 
   const PlantCareDataResult({
@@ -123,11 +127,13 @@ class CarePlanSyncResult {
   final List<String> warnings;
   final int notificationsCreated;
   final String? weatherSource;
+  final List<TaskModel> tasks;
 
   const CarePlanSyncResult({
     required this.warnings,
     required this.notificationsCreated,
     this.weatherSource,
+    this.tasks = const [],
   });
 
   factory CarePlanSyncResult.fromJson(Map<String, dynamic> json) {
@@ -138,21 +144,25 @@ class CarePlanSyncResult {
 
     return CarePlanSyncResult(
       warnings: warnings,
-      notificationsCreated: (json['notifications_created'] as num?)?.toInt() ?? 0,
+      notificationsCreated:
+          (json['notifications_created'] as num?)?.toInt() ?? 0,
       weatherSource: json['weather_source']?.toString(),
+      tasks: parseCareTasks(json['tasks']),
     );
   }
 }
 
 class PlantCareService {
   // --- Thông tin cây từ Vườn (theo BACKEND_FEATURE_4.md) ---
-  static Future<Map<String, dynamic>?> getGardenPlantById(String plantId) async {
-  final data = await DioClient.instance.get('/garden/$plantId');
-  if (data is Map) {
-    return Map<String, dynamic>.from(data);
+  static Future<Map<String, dynamic>?> getGardenPlantById(
+    String plantId,
+  ) async {
+    final data = await DioClient.instance.get('/garden/$plantId');
+    if (data is Map) {
+      return Map<String, dynamic>.from(data);
+    }
+    return null;
   }
-  return null;
-}
 
   static Future<Map<String, dynamic>> updatePlantNickname(
     String plantId,
@@ -173,26 +183,24 @@ class PlantCareService {
   static Future<CareSchedulesResult> getSchedules(String plantId) async {
     final data = await DioClient.instance.get('/plants/$plantId/schedules');
     if (data is! Map) {
-      return const CareSchedulesResult(
-        timezone: 'Asia/Ho_Chi_Minh',
-        items: [],
-      );
+      return const CareSchedulesResult(timezone: 'Asia/Ho_Chi_Minh', items: []);
     }
 
     final rawItems = data['items'];
     final items = rawItems is List
         ? rawItems
-            .whereType()
-            .map(
-              (item) =>
-                  CareScheduleItem.fromJson(Map<String, dynamic>.from(item)),
-            )
-            .toList()
+              .whereType()
+              .map(
+                (item) =>
+                    CareScheduleItem.fromJson(Map<String, dynamic>.from(item)),
+              )
+              .toList()
         : <CareScheduleItem>[];
 
     return CareSchedulesResult(
       timezone: data['timezone']?.toString() ?? 'Asia/Ho_Chi_Minh',
       items: items,
+      tasks: parseCareTasks(data['tasks']),
     );
   }
 
@@ -283,3 +291,10 @@ class PlantCareService {
     return Map<String, dynamic>.from(data as Map);
   }
 }
+
+List<TaskModel> parseCareTasks(dynamic raw) => raw is List
+    ? raw
+          .whereType<Map>()
+          .map((item) => TaskModel.fromJson(Map<String, dynamic>.from(item)))
+          .toList()
+    : [];

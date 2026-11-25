@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../theme/app_theme.dart';
 
 // --- Thẻ Hướng dẫn chăm sóc ---
@@ -24,11 +25,23 @@ class InfoCard extends StatelessWidget {
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         leading: Container(
           padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(color: iconColor.withValues(alpha: 0.1), shape: BoxShape.circle),
+          decoration: BoxDecoration(
+            color: iconColor.withValues(alpha: 0.1),
+            shape: BoxShape.circle,
+          ),
           child: Icon(icon, color: iconColor, size: 24),
         ),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.titleTextColor)),
-        subtitle: Text(subtitle, style: const TextStyle(color: AppTheme.subTextColor, fontSize: 13)),
+        title: Text(
+          title,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            color: AppTheme.titleTextColor,
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: const TextStyle(color: AppTheme.subTextColor, fontSize: 13),
+        ),
       ),
     );
   }
@@ -65,7 +78,10 @@ class ToggleReminderCard extends StatelessWidget {
           children: [
             Container(
               padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(color: iconColor.withValues(alpha: 0.1), shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                color: iconColor.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
               child: Icon(icon, color: iconColor, size: 24),
             ),
             const SizedBox(width: 16),
@@ -73,13 +89,34 @@ class ToggleReminderCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.titleTextColor)),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.titleTextColor,
+                    ),
+                  ),
                   const SizedBox(height: 4),
-                  Text(subtitle, style: const TextStyle(color: AppTheme.subTextColor, fontSize: 13)),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      color: AppTheme.subTextColor,
+                      fontSize: 13,
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: onEdit,
+                    icon: const Icon(Icons.edit_outlined, size: 16),
+                    label: const Text('Chỉnh sửa'),
+                  ),
                 ],
               ),
             ),
-            Switch(value: value, onChanged: onChanged, activeThumbColor: AppTheme.primaryColor),
+            Switch(
+              value: value,
+              onChanged: onChanged,
+              activeThumbColor: AppTheme.primaryColor,
+            ),
           ],
         ),
       ),
