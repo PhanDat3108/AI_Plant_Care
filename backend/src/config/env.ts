@@ -31,6 +31,8 @@ export function readConfig(input: NodeJS.ProcessEnv) {
       CRON_SECRET: z
         .union([z.string().min(32).max(256), z.literal("")])
         .optional(),
+      PUSH_ENABLED: flag.prefault("false"),
+      GOOGLE_APPLICATION_CREDENTIALS: z.string().trim().optional(),
       CARE_AI_MODE: z.enum(["auto", "demo", "live"]).default("auto"),
       GEMINI_API_KEY: z.string().trim().default(""),
       PLANTNET_API_KEY: z.string().trim().default(""),
@@ -54,6 +56,9 @@ export function readConfig(input: NodeJS.ProcessEnv) {
     })
     .parse(input);
 
+  if (config.PUSH_ENABLED && !config.GOOGLE_APPLICATION_CREDENTIALS) {
+    throw new Error("PUSH_ENABLED=true cần GOOGLE_APPLICATION_CREDENTIALS.");
+  }
   if (config.DEV_AUTH_BYPASS && config.NODE_ENV !== "development") {
     throw new Error("DEV_AUTH_BYPASS chỉ được bật trong development.");
   }

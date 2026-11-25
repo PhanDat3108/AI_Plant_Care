@@ -27,7 +27,8 @@
     "reminders:start": "node dist/jobs/reminders.js",
     "reminders:watch": "tsx src/jobs/reminders.ts --watch",
     "care:check": "tsx src/jobs/check-care.ts",
-    "db:seed:examples": "tsx database/seed-examples.ts"
+    "db:seed:examples": "tsx database/seed-examples.ts",
+    "push:check": "tsx src/jobs/check-push.ts"
   },
   "dependencies": {
     "@js-temporal/polyfill": "^0.5.1",
@@ -37,6 +38,7 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.0",
     "express": "^5.1.0",
+    "firebase-admin": "^14.5.1",
     "multer": "^2.5.0",
     "pg": "^8.16.0",
     "zod": "^4.0.0"

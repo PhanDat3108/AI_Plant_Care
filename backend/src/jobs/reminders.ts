@@ -1,3 +1,5 @@
+import { firebasePushSender } from "../config/firebase.js";
+import { pushNotificationService } from "../services/push-notifications.js";
 import { reminderService } from "../services/reminders.js";
 import { readConfig } from "../config/env.js";
 import { createDatabase } from "../config/database.js";
@@ -8,6 +10,7 @@ const config = readConfig(process.env);
 const db = createDatabase(config.DATABASE_URL);
 const planner = carePlanner(db, openMeteoProvider());
 const service = reminderService(db, planner);
+const push = pushNotificationService(db, firebasePushSender(config));
 const watch = process.argv.includes("--watch");
 let stopped = false;
 let wake: (() => void) | undefined;
@@ -25,7 +28,8 @@ try {
       onPlantError: (plantId) =>
         console.error("Không đồng bộ được lịch cây", plantId),
     });
-    console.info(JSON.stringify(result));
+    const pushResult = await push.run();
+    console.info(JSON.stringify({ ...result, push: pushResult }));
     if (!watch) {
       if (result.failed) process.exitCode = 1;
       break;

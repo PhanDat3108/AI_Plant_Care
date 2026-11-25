@@ -31,7 +31,7 @@ export function internalReminderRoutes(db: Database, config: Config) {
       }
       next();
     },
-    internalReminderController(db),
+    internalReminderController(db, config),
   );
   return router;
 }

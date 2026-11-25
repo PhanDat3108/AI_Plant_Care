@@ -434,8 +434,13 @@ class _SettingsCard extends StatelessWidget {
 
     if (confirmed == true && context.mounted) {
       // POST /auth/logout + xóa token trên máy (kể cả khi mất mạng).
-      await AuthService.logout();
+      final pushRemoved = await AuthService.logout();
       if (!context.mounted) return;
+      if (!pushRemoved) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Đã đăng xuất. Thiết bị vẫn có thể nhận lời nhắc vì chưa gỡ được trên máy chủ.'),
+        ));
+      }
       Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const LoginScreen()),
         (route) => false,

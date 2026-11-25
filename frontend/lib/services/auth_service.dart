@@ -1,6 +1,7 @@
 import '../core/api_exception.dart';
 import 'dio_client.dart';
 import 'token_storage.dart';
+import 'push_notification_service.dart';
 
 /// Các thao tác xác thực, gọi đúng API trong hợp đồng backend (tiền tố /api/v1
 /// đã nằm trong ApiConfig.baseUrl).
@@ -71,7 +72,8 @@ class AuthService {
 
   /// POST /auth/logout rồi xóa token trên thiết bị.
   /// Dù gọi API lỗi (mất mạng...) vẫn xóa token để người dùng thoát được.
-  static Future<void> logout() async {
+  static Future<bool> logout() async {
+    final pushRemoved = await PushNotificationService.instance.endSession();
     try {
       await _api.post('/auth/logout');
     } on ApiException {
@@ -79,6 +81,7 @@ class AuthService {
     } finally {
       await TokenStorage.clear();
     }
+    return pushRemoved;
   }
 
   /// Đã có token lưu trên máy hay chưa (dùng để quyết định mở màn nào đầu tiên).

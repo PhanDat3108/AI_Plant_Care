@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import '../services/push_notification_service.dart';
 
 import '../theme/app_theme.dart';
 
@@ -23,6 +26,24 @@ class _NavigationBottomBarState extends State<NavigationBottomBar> {
   bool _hasUnreadNotification = false;
 
   late final List<Widget> _screens;
+  final _push = PushNotificationService.instance;
+  late final StreamSubscription<String> _received;
+  late final StreamSubscription<void> _opened;
+  late final AppLifecycleListener _lifecycle;
+
+  void _openPush() {
+    if (!mounted || !_push.takeOpen()) return;
+    Navigator.of(context).popUntil((route) => route == ModalRoute.of(context) || route.isFirst);
+    _onItemTapped(2);
+  }
+
+  @override
+  void dispose() {
+    _lifecycle.dispose();
+    _received.cancel();
+    _opened.cancel();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -40,6 +61,18 @@ class _NavigationBottomBarState extends State<NavigationBottomBar> {
       ),
       const ProfileScreen(),
     ];
+    _received = _push.received.stream.listen((title) {
+      if (!mounted) return;
+      _notificationKey.currentState?.loadNotifications();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(title)));
+    });
+    _opened = _push.opened.stream.listen((_) => _openPush());
+    _lifecycle = AppLifecycleListener(onResume: () => _push.sync());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _push.beginSession();
+      _openPush();
+    });
   }
 
   void _onItemTapped(int index) {

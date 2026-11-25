@@ -86,3 +86,18 @@ it("signals partial failure for scheduler monitoring", async () => {
     .expect(503);
   expect(r.body.error.code).toBe("REMINDER_RUN_INCOMPLETE");
 });
+
+it("drains persisted pushes when no new reminders can run", async () => {
+  const push = { run: vi.fn().mockResolvedValue({ sent: 1 }) };
+  const result = await scheduledReminderService(database(false), push).run();
+  expect(result).toMatchObject({ skipped: true, push: { sent: 1 } });
+  expect(push.run).toHaveBeenCalledOnce();
+});
+it("drains pushes after a partial planner failure before reporting it", async () => {
+  runOnce.mockResolvedValue({ processed: 0, failed: 1, notifications_created: 0 });
+  const push = { run: vi.fn().mockResolvedValue({ sent: 1 }) };
+  await expect(scheduledReminderService(database(), push).run()).rejects.toMatchObject({
+    code: "REMINDER_RUN_INCOMPLETE",
+  });
+  expect(push.run).toHaveBeenCalledOnce();
+});
