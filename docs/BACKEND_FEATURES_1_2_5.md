@@ -45,6 +45,8 @@ Open-Meteo không cần API key cho bản giáo dục/phi thương mại này; k
 
 ## Hợp đồng với bạn làm AI / vườn cây / nhật ký
 
+> **Xem tài liệu chi tiết API Vườn cây (Feature 5) tại:** [BACKEND_FEATURE_5.md](BACKEND_FEATURE_5.md) (bao gồm kiểm tra quyền sở hữu `cover_image_key` và trả về `cover_image_url` từ Supabase Storage).
+
 Module AI/vườn cây lưu các trường hiện đã có trong DB:
 
 - `plants.owner_id`: UUID Auth, `species_id`: loài đã xác định hoặc null.

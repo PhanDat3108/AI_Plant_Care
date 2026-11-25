@@ -1,6 +1,7 @@
 import type { Request, Response, RequestHandler } from "express";
 import { z } from "zod";
 import type { Database } from "../config/database.js";
+import type { Config } from "../config/env.js";
 import {
   gardenService,
   addPlant as addPlantService,
@@ -50,12 +51,13 @@ export async function addPlantController(
   req: Request,
   res: Response,
   db?: Database,
+  config?: Config,
 ): Promise<void> {
   try {
     const ownerId = getUserId(req, res);
     const parsedBody = addPlantSchema.parse(req.body);
 
-    const plant = await addPlantService(ownerId, parsedBody, db);
+    const plant = await addPlantService(ownerId, parsedBody, db, config);
     res.status(201).json({
       success: true,
       data: plant,
@@ -74,10 +76,11 @@ export async function getGardenController(
   req: Request,
   res: Response,
   db?: Database,
+  config?: Config,
 ): Promise<void> {
   try {
     const ownerId = getUserId(req, res);
-    const plants = await getGardenPlantsService(ownerId, db);
+    const plants = await getGardenPlantsService(ownerId, db, config);
 
     res.status(200).json({
       success: true,
@@ -179,7 +182,7 @@ function handleControllerError(
 /**
  * Factory gardenController đóng gói toàn bộ handler (bao gồm cả các hàm list/detail cũ và 4 hàm mới)
  */
-export function gardenController(db: Database): {
+export function gardenController(db: Database, config?: Config): {
   list: RequestHandler;
   detail: RequestHandler;
   addPlant: RequestHandler;
@@ -187,7 +190,7 @@ export function gardenController(db: Database): {
   updateNickname: RequestHandler;
   removePlant: RequestHandler;
 } {
-  const service = gardenService(db);
+  const service = gardenService(db, config);
   return {
     async list(req, res) {
       const { offset, limit } = z
@@ -205,10 +208,10 @@ export function gardenController(db: Database): {
       );
     },
     addPlant(req, res) {
-      return addPlantController(req, res, db);
+      return addPlantController(req, res, db, config);
     },
     getGarden(req, res) {
-      return getGardenController(req, res, db);
+      return getGardenController(req, res, db, config);
     },
     updateNickname(req, res) {
       return updateNicknameController(req, res, db);
