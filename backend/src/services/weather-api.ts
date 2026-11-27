@@ -1,3 +1,4 @@
+import { Temporal } from "@js-temporal/polyfill";
 import { z } from "zod";
 import type { Forecast, WeatherProvider } from "./weather.js";
 
@@ -11,13 +12,22 @@ const schema = z.object({
       daily_chance_of_rain: z.union([number, z.string().regex(/^\d+(\.\d+)?$/).transform(Number)])
         .pipe(z.number().min(0).max(100)).nullable(),
       maxtemp_c: number.min(-100).max(80).nullable(),
-      totalsnow_cm: number.min(0),
+      totalsnow_cm: number.min(0).nullable().optional(),
     }),
   })).min(1).max(3) }),
 });
 
 function canonicalZone(zone: string) {
   return new Intl.DateTimeFormat("en", { timeZone: zone }).resolvedOptions().timeZone;
+}
+
+function sameLocalClock(providerZone: string, userZone: string, at: Date) {
+  if (canonicalZone(providerZone) === canonicalZone(userZone)) return true;
+  const instant = Temporal.Instant.fromEpochMilliseconds(at.getTime());
+  return (
+    instant.toZonedDateTimeISO(providerZone).offsetNanoseconds ===
+    instant.toZonedDateTimeISO(userZone).offsetNanoseconds
+  );
 }
 
 // Bound response memory; never log the URL (it includes the API key), body or errors.
@@ -74,7 +84,9 @@ export function weatherApiProvider(
             throw new Error("provider unavailable");
           }
           const data = schema.parse(await readJson(r));
-          if (canonicalZone(data.location.tz_id) !== canonicalZone(timezone)) throw new Error("timezone mismatch");
+          if (!sameLocalClock(data.location.tz_id, timezone, clock())) {
+            throw new Error(`timezone mismatch (${data.location.tz_id} vs ${timezone})`);
+          }
           const days = data.forecast.forecastday;
           if (new Set(days.map(d => d.date)).size !== days.length) throw new Error("duplicate dates");
           value = {
@@ -82,14 +94,26 @@ export function weatherApiProvider(
             days: days.map(({ date, day }) => ({
               date,
               // Total precipitation includes snow: do not treat it as rainfall.
-              rain_mm: day.totalsnow_cm > 0 ? null : day.totalprecip_mm,
+              rain_mm: (day.totalsnow_cm ?? 0) > 0 ? null : day.totalprecip_mm,
               rain_probability: day.daily_chance_of_rain,
               temperature_max_c: day.maxtemp_c,
             })),
           };
           console.info("WEATHER_FALLBACK_USED", "weatherapi");
-        } catch {
-          console.warn("WEATHER_BACKUP_UNAVAILABLE");
+        } catch (error) {
+          const reason =
+            error instanceof z.ZodError
+              ? `schema:${error.issues.map((i) => i.path.join(".")).join(",")}`
+              : error instanceof Error &&
+                  (error.message.startsWith("timezone mismatch") ||
+                    ["provider unavailable", "duplicate dates", "empty response", "oversized response"].includes(
+                      error.message,
+                    ))
+                ? error.message
+                : error instanceof Error
+                  ? error.name
+                  : "unknown";
+          console.warn("WEATHER_BACKUP_UNAVAILABLE", reason);
         }
         if (cache.size >= 500) cache.delete(cache.keys().next().value!);
         cache.set(key, { until: clock().getTime() + (value ? 3600_000 : 60_000), value });

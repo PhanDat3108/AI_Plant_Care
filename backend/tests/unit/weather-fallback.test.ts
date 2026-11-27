@@ -51,6 +51,13 @@ it("rejects timezone mismatch and malformed precipitation", async () => {
       .forecast(21, 105, "Asia/Ho_Chi_Minh")).toBeNull();
   }
 });
+it("accepts equivalent UTC offset timezone such as Asia/Bangkok for Asia/Ho_Chi_Minh", async () => {
+  const sameOffset = body();
+  sameOffset.location.tz_id = "Asia/Bangkok";
+  const f = await weatherApiProvider("key", async () => Response.json(sameOffset), () => now)
+    .forecast(21, 105, "Asia/Ho_Chi_Minh");
+  expect(f?.source).toBe("weatherapi");
+});
 it("snow is not interpreted as rainfall", async () => {
   const data = body(); data.forecast.forecastday[0].day.totalsnow_cm = 1;
   const f = await weatherApiProvider("key", async () => Response.json(data), () => now).forecast(21, 105, "Asia/Ho_Chi_Minh");
