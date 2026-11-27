@@ -99,7 +99,7 @@ it("chủ cây thấy đúng dữ liệu và metadata ảnh tham khảo", async 
     data: { reference_image_id: imageId },
   });
   const r = await request(app)
-    .get("/api/v1/plants/" + plantId)
+    .get("/api/v1/garden/" + plantId)
     .set("Authorization", "Bearer test")
     .expect(200);
   expect(r.body.data.referenceImage.attribution).toBe("Test fixture");
@@ -108,11 +108,11 @@ it("chủ cây thấy đúng dữ liệu và metadata ảnh tham khảo", async 
 it("người khác không xem được cây kể cả biết UUID", async () => {
   authorize(b);
   await request(app)
-    .get("/api/v1/plants/" + plantId)
+    .get("/api/v1/garden/" + plantId)
     .set("Authorization", "Bearer test")
     .expect(404);
   const r = await request(app)
-    .get("/api/v1/plants")
+    .get("/api/v1/garden")
     .set("Authorization", "Bearer test")
     .expect(200);
   expect(r.body.data).toEqual([]);

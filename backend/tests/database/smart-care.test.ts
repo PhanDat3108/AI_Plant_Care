@@ -234,3 +234,93 @@ it("other owner cannot trigger weather access or read tasks; date validation enf
     .set("Authorization", "Bearer test")
     .expect(400);
 });
+
+it("overdue reminders repeat once per local day at the configured hour, stop after completion", async () => {
+  const p = await plant("indoor", false, false);
+  await db.care_schedules.create({ data: {
+    plant_id: p.id, kind: "water", interval_days: 7,
+    local_time: new Date("1970-01-01T08:00:00Z"),
+    starts_at: new Date("2026-11-18T01:00:00Z"),
+  } });
+  let tick = new Date("2026-11-25T01:00:00Z"); // 08:00 Vietnam
+  const daily = carePlanner(db, { forecast }, () => tick);
+  const initial = await daily.sync(owner, p.id);
+  const task = initial.tasks[0];
+  expect(initial.notifications_created).toBe(1);
+  expect((await daily.sync(owner, p.id)).notifications_created).toBe(0);
+  tick = new Date("2026-11-26T00:59:59Z");
+  expect((await daily.sync(owner, p.id)).notifications_created).toBe(0);
+  tick = new Date("2026-11-26T01:00:00Z");
+  const results = await Promise.all([daily.sync(owner, p.id), daily.sync(owner, p.id)]);
+  expect(results.reduce((sum, result) => sum + result.notifications_created, 0)).toBe(1);
+  const repeat = await db.notifications.findUniqueOrThrow({ where: {
+    owner_id_event_key: { owner_id: owner, event_key: `care-task:${task.id}:overdue:2026-11-26` },
+  } });
+  expect(repeat.title).toContain("chưa ghi nhận tưới nước");
+  expect(repeat.body).toContain("kiểm tra độ ẩm");
+  tick = new Date("2026-11-26T16:59:00Z");
+  expect((await daily.sync(owner, p.id)).notifications_created).toBe(0);
+  // Missing one cron day must not generate a backlog of daily alerts.
+  tick = new Date("2026-11-28T01:10:00Z");
+  expect((await daily.sync(owner, p.id)).notifications_created).toBe(1);
+  await db.care_logs.create({ data: {
+    plant_id: p.id, task_id: task.id, request_id: randomUUID(), kind: "water", performed_at: tick,
+  } });
+  await db.care_tasks.update({ where: { id: task.id }, data: { state: "done" } });
+  const completed = await daily.sync(owner, p.id);
+  expect(completed.notifications_created).toBe(0);
+  expect(completed.tasks[0].due_at.toISOString()).toBe("2026-12-05T01:00:00.000Z");
+});
+
+it("disabled schedules stop overdue alerts, including fertilizing", async () => {
+  const p = await plant("indoor", false, false);
+  const schedule = await db.care_schedules.create({ data: {
+    plant_id: p.id, kind: "fertilize", interval_days: 7,
+    local_time: new Date("1970-01-01T22:53:00Z"),
+    starts_at: new Date("2026-11-18T01:00:00Z"),
+  } });
+  let tick = new Date("2026-11-25T15:53:00Z");
+  const daily = carePlanner(db, { forecast }, () => tick);
+  const first = await daily.sync(owner, p.id);
+  tick = new Date("2026-11-26T15:53:00Z");
+  expect((await daily.sync(owner, p.id)).notifications_created).toBe(1);
+  const reminder = await db.notifications.findFirstOrThrow({ where: {
+    owner_id: owner, event_key: `care-task:${first.tasks[0].id}:overdue:2026-11-26`,
+  } });
+  expect(reminder.title).toContain("bón phân");
+  await db.care_schedules.update({ where: { id: schedule.id }, data: { enabled: false } });
+  tick = new Date("2026-11-27T15:53:00Z");
+  expect((await daily.sync(owner, p.id)).notifications_created).toBe(0);
+});
+
+it("first catch-up notification is not followed by another overdue alert the same day", async () => {
+  const p = await plant("indoor", false, false);
+  await db.care_schedules.create({ data: {
+    plant_id: p.id, kind: "water", interval_days: 7,
+    local_time: new Date("1970-01-01T08:00:00Z"),
+    starts_at: new Date("2026-11-18T01:00:00Z"),
+  } });
+  const daily = carePlanner(db, { forecast }, () => new Date("2026-11-28T02:00:00Z"));
+  expect((await daily.sync(owner, p.id)).notifications_created).toBe(1);
+  expect((await daily.sync(owner, p.id)).notifications_created).toBe(0);
+});
+
+it("daily key follows the account date even before UTC midnight", async () => {
+  const p = await plant("indoor", false, false);
+  await db.care_schedules.create({ data: {
+    plant_id: p.id, kind: "water", interval_days: 7,
+    local_time: new Date("1970-01-01T00:30:00Z"),
+    starts_at: new Date("2026-11-18T01:00:00Z"),
+  } });
+  let tick = new Date("2026-11-24T17:30:00Z");
+  const daily = carePlanner(db, { forecast }, () => tick);
+  const first = await daily.sync(owner, p.id);
+  expect(first.notifications_created).toBe(1);
+  tick = new Date("2026-11-25T17:29:59Z");
+  expect((await daily.sync(owner, p.id)).notifications_created).toBe(0);
+  tick = new Date("2026-11-25T17:30:00Z");
+  expect((await daily.sync(owner, p.id)).notifications_created).toBe(1);
+  expect(await db.notifications.count({ where: {
+    owner_id: owner, event_key: `care-task:${first.tasks[0].id}:overdue:2026-11-26`,
+  } })).toBe(1);
+});

@@ -24,7 +24,7 @@ Mở http://localhost:3100/api/v1/ready. Kết quả đúng là HTTP 200 và:
 
 DB Supabase chung đã được áp dụng các migration ban đầu. Người mới nhận code không cần chạy lại migration hay seed. Không chạy `db:seed`, `prisma migrate reset` hoặc thử thay đổi bảng trên DB chung. Khi nhóm có migration mới đã được duyệt, người phụ trách DB chạy `npm run db:migrate`; thành viên cập nhật code rồi chạy `npm run db:generate`. Chạy kiểm thử ghi dữ liệu trên DB riêng.
 
-Giữ `DEV_AUTH_BYPASS=false` với Supabase chung. Backend đã có API Auth và middleware xác minh token. Điền `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` theo project: `/health` và `/ready` công khai, các API `/me`, `/plants` cần token hợp lệ và cấu hình Auth. Chưa có token thì HTTP 401 là bình thường. Flutter chưa được tích hợp trong phần backend này.
+Giữ `DEV_AUTH_BYPASS=false` với Supabase chung. Backend đã có API Auth và middleware xác minh token. Điền `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` theo project: `/health` và `/ready` công khai, các API `/me`, `/garden` cần token hợp lệ và cấu hình Auth. Chưa có token thì HTTP 401 là bình thường. Flutter đã tích hợp API; xem README frontend để cấu hình URL.
 
 Mỗi lần đổi `.env`, dừng server bằng Ctrl+C rồi chạy lại `npm run dev`. Trên PowerShell nếu `npm.ps1` bị chặn, dùng `npm.cmd` thay cho `npm`.
 
@@ -54,7 +54,7 @@ npm run db:seed
 npm run dev
 ```
 
-Seed tạo tài khoản demo, hai loài, hai cây, hai lịch tưới và hai việc đến hạn. Chạy lại không nhân bản. Chu kỳ là dữ liệu minh họa để nhóm thử chức năng. Lệnh seed yêu cầu NODE_ENV=development và DEV_AUTH_BYPASS=true. Khi backend đã chạy, mở [health](http://127.0.0.1:3100/api/v1/health), [ready](http://127.0.0.1:3100/api/v1/ready), [vườn demo](http://127.0.0.1:3100/api/v1/plants) hoặc [hồ sơ demo](http://127.0.0.1:3100/api/v1/me).
+Seed tạo tài khoản demo, hai loài, hai cây, hai lịch tưới và hai việc đến hạn. Chạy lại không nhân bản. Chu kỳ là dữ liệu minh họa để nhóm thử chức năng. Lệnh seed yêu cầu NODE_ENV=development và DEV_AUTH_BYPASS=true. Khi backend đã chạy, mở [health](http://127.0.0.1:3100/api/v1/health), [ready](http://127.0.0.1:3100/api/v1/ready), [vườn demo](http://127.0.0.1:3100/api/v1/garden) hoặc [hồ sơ demo](http://127.0.0.1:3100/api/v1/me).
 
 Trên PowerShell nếu npm.ps1 bị chặn, dùng npm.cmd cho các lệnh npm. Flutter Android Emulator gọi http://10.0.2.2:3100/api/v1. Điện thoại thật dùng IP LAN của máy backend, cùng Wi-Fi và cho phép cổng 3100 trên firewall. Backend đang lắng nghe 0.0.0.0.
 
@@ -92,8 +92,8 @@ Nguồn kết nối [Supabase](https://supabase.com/docs/guides/database/connect
 | GET /api/v1/health | Công khai | Liveness của tiến trình và trạng thái demo auth |
 | GET /api/v1/ready | Công khai | 200 khi đọc được bảng profiles; 503 khi DB/schema chưa sẵn sàng |
 | GET /api/v1/me | Auth hoặc development demo | Hồ sơ và isDemo |
-| GET /api/v1/plants?limit=20&offset=0 | Auth hoặc development demo | Cây của chủ đã xác minh, limit tối đa 100 |
-| GET /api/v1/plants/:id | Auth hoặc development demo | Cây, loài và metadata ảnh bìa tham khảo nếu có |
+| GET /api/v1/garden?limit=20&offset=0 | Auth hoặc development demo | Cây của chủ đã xác minh, limit tối đa 100 |
+| GET /api/v1/garden/:id | Auth hoặc development demo | Cây, loài và metadata ảnh bìa tham khảo nếu có |
 
 Mọi response có success, data, error và message. Lỗi dùng mã INVALID_INPUT (400), UNAUTHORIZED (401), NOT_FOUND (404), AUTH_UNAVAILABLE/DATABASE_UNAVAILABLE (503), INTERNAL_ERROR (500). Header X-Request-ID dùng đối chiếu log. Log chỉ ghi method, path, status, thời gian và request ID.
 

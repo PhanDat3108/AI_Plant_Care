@@ -161,3 +161,13 @@ Kiểm thử trên Android sau khi tích hợp Flutter:
 3. Đợi cron, kiểm tra `data.push.sent`, máy nhận push và màn lịch sử có thông báo.
 4. Chạy cron lần nữa để kiểm tra lượt đã sent được bỏ qua.
 5. Gỡ thiết bị, đăng xuất rồi thử một lời nhắc mới để kiểm tra máy đã ngừng nhận theo tài khoản cũ.
+
+## Nhắc lại việc quá hạn (backend, 27/11/2026)
+
+Sau thông báo đến hạn đầu tiên, nếu nhiệm vụ còn pending và lịch vẫn bật, backend tạo tối đa một thông báo nhắc lại mỗi ngày theo múi giờ tài khoản, từ giờ local_time của lịch trở đi. Nội dung là “Bạn chưa ghi nhận tưới nước/bón phân”, kèm tên cây và lời nhắc kiểm tra trước khi chăm sóc. Đọc thông báo không có nghĩa đã hoàn thành nhiệm vụ.
+
+Event key gốc `care-task:<task-id>` giữ nguyên; lần nhắc lại dùng `care-task:<task-id>:overdue:<YYYY-MM-DD>`. Unique index sẵn có chống trùng giữa cron và đồng bộ thủ công. Push nhận diện cả hai dạng key và kiểm tra nhiệm vụ vẫn pending, lịch bật, thiết bị còn active trước khi gửi. Không cần migration, không đổi hợp đồng API/frontend.
+
+Ghi nhật ký chăm sóc cập nhật chu kỳ; hoàn thành nhiệm vụ hoặc tắt lịch dừng nhắc lại cho nhiệm vụ đó. Backend không tự coi cây đã được tưới, không đẩy ngày due_at để che việc quá hạn. Nhãn “Lần nhắc tiếp theo” trên frontend vẫn có thể hiển thị ngày cũ.
+
+Cần cron-job.org bật và gọi endpoint reminders/run thành công. Cron 5 phút/lần sẽ gửi ở lượt chạy đầu tiên từ giờ đặt trở đi, không bảo đảm chính xác đến từng giây. Nếu bỏ lỡ nhiều ngày, không gửi bù một loạt thông báo từng ngày. Lần thông báo gốc chưa từng được tạo vẫn được xử lý theo cơ chế catch-up hiện tại, sau đó nhắc lại hằng ngày; không tạo thêm nhắc lại trong cùng ngày với thông báo gốc.

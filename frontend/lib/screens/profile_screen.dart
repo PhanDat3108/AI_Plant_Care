@@ -6,7 +6,6 @@ import '../services/auth_service.dart';
 import '../services/profile_service.dart';
 import '../services/token_storage.dart';
 import '../theme/app_theme.dart';
-import '../theme/theme_controller.dart';
 import '../widgets/header_sheet_scaffold.dart';
 import '../widgets/stat_card.dart';
 import 'login_screen.dart';
@@ -334,26 +333,6 @@ class _SettingsCard extends StatelessWidget {
           ),
           divider,
 
-          // Chế độ Tối
-          ValueListenableBuilder<ThemeMode>(
-            valueListenable: ThemeController.themeMode,
-            builder: (context, mode, _) {
-              return ListTile(
-                leading: const Icon(
-                  Icons.nightlight_round,
-                  color: AppTheme.subTextColor,
-                ),
-                title: const Text('Chế độ Tối', style: _tileTitleStyle),
-                trailing: Switch(
-                  value: mode == ThemeMode.dark,
-                  onChanged: ThemeController.setDark,
-                ),
-                onTap: () => ThemeController.setDark(mode != ThemeMode.dark),
-              );
-            },
-          ),
-          divider,
-
           // Thông tin ứng dụng
           ListTile(
             leading: const Icon(
@@ -437,9 +416,13 @@ class _SettingsCard extends StatelessWidget {
       final pushRemoved = await AuthService.logout();
       if (!context.mounted) return;
       if (!pushRemoved) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Đã đăng xuất. Thiết bị vẫn có thể nhận lời nhắc vì chưa gỡ được trên máy chủ.'),
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Đã đăng xuất. Thiết bị vẫn có thể nhận lời nhắc vì chưa gỡ được trên máy chủ.',
+            ),
+          ),
+        );
       }
       Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const LoginScreen()),

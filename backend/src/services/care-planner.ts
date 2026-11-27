@@ -1,7 +1,7 @@
 import { Prisma } from "../generated/prisma/client.js";
 import type { Database } from "../config/database.js";
 import { HttpError } from "../middlewares/errors.js";
-import { nextDue, weatherAdjustment } from "./care-policy.js";
+import { atLocal, localDate, nextDue, weatherAdjustment } from "./care-policy.js";
 import type { WeatherProvider } from "./weather.js";
 
 export function carePlanner(
@@ -167,7 +167,7 @@ export function carePlanner(
               where: {
                 owner_id_event_key: { owner_id: ownerId, event_key: eventKey },
               },
-              select: { id: true },
+              select: { id: true, created_at: true },
             });
             if (!notified) {
               if (plant.environment !== "outdoor" && task.adjustment_reason) {
@@ -233,6 +233,29 @@ export function carePlanner(
                 });
                 addedNotifications += inserted.count;
               }
+            }
+            // Keep the original occurrence and its history. One new inbox/push
+            // event per overdue LOCAL day, even when cron/manual sync race.
+            const today = localDate(now, plant.profiles.timezone);
+            if (
+              notified &&
+              localDate(task.due_at, plant.profiles.timezone).toString() < today.toString() &&
+              localDate(notified.created_at, plant.profiles.timezone).toString() < today.toString() &&
+              now >= atLocal(today, time, plant.profiles.timezone)
+            ) {
+              const action = task.kind === "water" ? "tưới nước" : "bón phân";
+              const inserted = await tx.notifications.createMany({
+                data: [{
+                  owner_id: ownerId,
+                  event_key: `${eventKey}:overdue:${today.toString()}`,
+                  kind: task.kind,
+                  title: `Bạn chưa ghi nhận ${action}`,
+                  body: `${plant.nickname}: lịch ${action} đã quá hạn. ${task.kind === "water" ? "Hãy kiểm tra độ ẩm đất trước khi tưới." : "Hãy kiểm tra hướng dẫn trước khi bón phân."} Nếu đã chăm sóc, hãy ghi nhật ký để cập nhật lịch. Dừng nhắc bằng cách hoàn thành việc hoặc tắt lịch.`.slice(0, 4000),
+                  created_at: now,
+                }],
+                skipDuplicates: true,
+              });
+              addedNotifications += inserted.count;
             }
             tasks.push(task);
           }

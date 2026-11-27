@@ -307,3 +307,35 @@ it("disabled push does not claim or send pending deliveries", async () => {
     }),
   ).toBe(1);
 });
+
+it("daily overdue events enqueue and deliver push for the original pending task", async () => {
+  await devices.register(user(), registration());
+  const { notification, task } = await reminder();
+  // Isolate the repeat delivery from the original notification's delivery.
+  await db.notifications.update({ where: { id: notification.id }, data: { read_at: now } });
+  const repeat = await db.notifications.create({ data: {
+    owner_id: users[0], kind: "water",
+    event_key: `care-task:${task.id}:overdue:2026-11-27`,
+    title: "Bạn chưa ghi nhận tưới nước", body: "Hãy kiểm tra độ ẩm đất.", created_at: now,
+  } });
+  const send = vi.fn(async () => "accepted");
+  const runner = pushNotificationService(db, send, () => now);
+  await runner.run();
+  expect(send).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+    data: expect.objectContaining({ notification_id: repeat.id }),
+  }));
+  expect((await runner.run()).claimed).toBe(0);
+});
+
+it("overdue push queued before completion is skipped once the task is done", async () => {
+  await devices.register(user(), registration());
+  const { task } = await reminder();
+  await db.notifications.create({ data: {
+    owner_id: users[0], kind: "water", event_key: `care-task:${task.id}:overdue:2026-11-27`,
+    title: "Reminder", body: "Overdue", created_at: now,
+  } });
+  await db.care_tasks.update({ where: { id: task.id }, data: { state: "done" } });
+  const send = vi.fn(async () => "accepted");
+  await pushNotificationService(db, send, () => now).run();
+  expect(send).not.toHaveBeenCalled();
+});

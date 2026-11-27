@@ -92,9 +92,16 @@ export function pushNotificationService(
                 ...(status === "sent" ? { sent_at: clock() } : {}),
               },
             });
+          // Daily overdue events retain the same task ID followed by a date.
+          const taskId = /^care-task:([0-9a-f-]{36})(?::overdue:\d{4}-\d{2}-\d{2})?$/i
+            .exec(notification.event_key ?? "")?.[1];
+          if (!taskId) {
+            await finish("skipped", "INVALID_TASK_EVENT");
+            return "skipped" as const;
+          }
           const task = await db.care_tasks.findFirst({
             where: {
-              id: notification.event_key?.slice("care-task:".length),
+              id: taskId,
               state: "pending",
               due_at: { lte: now },
               care_schedules: {

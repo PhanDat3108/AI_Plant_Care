@@ -31,7 +31,7 @@ describe("HTTP nền tảng", () => {
     expect(JSON.stringify(r.body)).not.toContain("secret");
   });
   it("thiếu token bị từ chối", async () => {
-    await request(app).get("/api/v1/plants").expect(401);
+    await request(app).get("/api/v1/garden").expect(401);
   });
   it("token giả bị dịch vụ Auth từ chối", async () => {
     const fetcher = vi
@@ -55,11 +55,11 @@ describe("HTTP nền tảng", () => {
     const userId = "10000000-0000-4000-8000-000000000001";
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(Response.json({ id: userId })),
+      vi.fn().mockImplementation(async () => Response.json({ id: userId })),
     );
     const query = vi.spyOn(db.plants, "findMany").mockResolvedValue([]);
     await request(app)
-      .get("/api/v1/plants?owner_id=someone-else")
+      .get("/api/v1/garden?owner_id=someone-else")
       .set("Authorization", "Bearer valid")
       .expect(200);
     expect(query).toHaveBeenCalledWith(
@@ -75,8 +75,8 @@ describe("HTTP nền tảng", () => {
       }),
       db,
     );
-    await request(demo).get("/api/v1/plants/not-a-uuid").expect(400);
-    await request(demo).get("/api/v1/plants?limit=1000").expect(400);
+    await request(demo).get("/api/v1/garden/not-a-uuid").expect(400);
+    await request(demo).get("/api/v1/notifications?limit=1000").expect(400);
   });
 });
 describe("Environment", () => {

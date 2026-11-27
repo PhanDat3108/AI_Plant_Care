@@ -1,50 +1,55 @@
 # Frontend AI Plant Care
 
-Ứng dụng Flutter cho Android/iOS. Điểm bắt đầu: `lib/main.dart`. Hiện là khung Flutter mặc định, chưa tích hợp backend hoặc Supabase Auth.
+Flutter đã tích hợp backend, Supabase Auth qua API, quét ảnh, vườn cây, lịch chăm sóc và push Android. Điểm vào: `lib/main.dart`.
 
-## Cài và chạy
+## Chuẩn bị
 
-Cài Flutter SDK với Dart tương thích `pubspec.yaml` (hiện `^3.13.4`), Android SDK/emulator hoặc thiết bị thật. Chạy iOS cần macOS và Xcode.
+1. Flutter 3.47.5 / Dart 3.13.4 (khớp CI), Android SDK, JDK 17 trở lên tương thích Android Gradle Plugin; chạy `flutter doctor` để kiểm tra.
+2. Mở emulator hoặc kết nối Android và bật USB debugging; kiểm tra `flutter devices`.
+3. Nhận Firebase client config đúng project từ người quản lý và đặt tại `android/app/google-services.json`. Package phải là `vn.aiplantcare.ai_plant_care`. Không dùng Firebase Admin JSON trong frontend.
+4. Đăng nhập Google hiện dùng trình duyệt OAuth/PKCE qua Supabase, không dùng Google Sign-In native: kiểm tra Supabase redirect theo [GOOGLE_MOBILE_SETUP](../docs/GOOGLE_MOBILE_SETUP.md). Không bắt buộc đăng ký SHA release cho luồng này.
 
-Từ thư mục frontend:
+## Chạy
+
+Từ thư mục `frontend`:
 
 ```sh
-flutter doctor
 flutter pub get
 flutter run
 ```
 
-Sửa các yêu cầu công cụ còn thiếu mà `flutter doctor` báo cho nền tảng muốn chạy. Chạy kiểm tra khi sửa code:
+Mặc định API là `https://ai-plant-care.onrender.com/api/v1`, cấu hình trong `lib/core/api_config.dart`. Không cần `.env` backend để dùng bản triển khai. Đăng ký tài khoản và xác nhận email trước khi đăng nhập; không có tài khoản/mật khẩu dùng chung trong repo.
+
+Đổi sang backend riêng khi chạy:
+
+```sh
+flutter run --dart-define=API_BASE_URL=http://10.0.2.2:3100/api/v1
+```
+
+Địa chỉ trên dành cho Android Emulator. Điện thoại thật dùng IP LAN máy backend, cùng mạng, cổng 3100 được phép truy cập. Dùng HTTPS cho bản phân phối. Backend phải đáp ứng `/api/v1/ready`; chỉ HTTP 200 từ health chưa chứng minh DB hoạt động.
+
+## Cấu trúc
+
+- `lib/screens/`, `lib/widgets/`: màn hình và thành phần giao diện.
+- `lib/services/`: API, xác thực, token và push.
+- `lib/models/`: dữ liệu ứng dụng.
+- `lib/core/`: URL API, lỗi, validation, chọn URL ảnh.
+- `lib/theme/`: theme sáng.
+- `test/`: unit và widget test, không cần gọi backend thật.
+
+## Kiểm tra và đóng gói
 
 ```sh
 flutter analyze
 flutter test
 ```
 
-## Kiểm thử cùng backend
+[Hướng dẫn ký APK release](../docs/RELEASE.md). CI tự chạy analyze/test khi push/PR; xem [CI](../docs/CI.md).
 
-Làm UI độc lập chưa cần file `.env` backend. Muốn chạy API trên máy mình, nhận `.env` riêng từ Đạt, đặt vào `backend/.env` và làm theo [README backend](../backend/README.md). Không đưa mật khẩu DB hoặc file `.env` backend vào Flutter.
+## Demo AI không có khóa nhà cung cấp
 
-Khi triển khai lớp gọi API, dùng base URL theo thiết bị:
+Người chạy backend đặt `CARE_AI_MODE=demo` rồi khởi động lại backend; app trỏ tới backend đó. Backend vẫn cần database, Auth và Storage được cấu hình. Kết quả AI khi này là dữ liệu minh họa, không dùng làm bằng chứng độ chính xác. Không bật demo trên backend dùng chung mà chưa thông báo cho nhóm.
 
-| Thiết bị | Base URL |
-| --- | --- |
-| Android Emulator chuẩn | `http://10.0.2.2:3100/api/v1` |
-| iOS Simulator trên máy Mac chạy backend | `http://localhost:3100/api/v1` |
-| Điện thoại thật | `http://<IP-LAN-máy-backend>:3100/api/v1` |
+## Dữ liệu, AI và giới hạn
 
-Điện thoại thật và máy backend cần cùng mạng, firewall cho phép cổng 3100. Kiểm tra đường dẫn `/ready` trước khi thử nghiệp vụ. Cấu hình base URL, quyền mạng/HTTP development và Supabase Auth trong Flutter chưa được triển khai; bảng trên là hướng dẫn cho lúc tích hợp.
-
-API cần đăng nhập sẽ yêu cầu header `Authorization: Bearer <access_token>`. Token lấy từ Supabase Auth sau đăng nhập; publishable key không thay thế access token của người dùng. Cấu hình và kiểm thử luồng đăng nhập đang được hoàn thiện.
-
-## Cấu trúc thư mục & Quy ước phát triển UI
-
-### Các thành phần nền tảng đã dựng sẵn
-- `lib/theme/app_theme.dart`: Bảng màu chuẩn toàn app (nền kem `#FAF7F0`, xanh lá đậm `#2E5A36`), bo góc 16dp và cấu hình Material 3.
-- `lib/models/`: Các class dữ liệu (`PlantModel`, `TaskModel`, `NotificationModel`...).
-- `lib/screens/navigation_bottombar.dart`: Thanh điều hướng BottomBar 5 mục đối xứng (Vườn cây, Việc cần làm, nút nổi Quét AI ở giữa, Thông báo, Hồ sơ) kèm các màn hình khung tạm thời để app chạy được ngay.
-
-
-## CI tự động
-
-GitHub Actions chạy `flutter analyze` và `flutter test` khi push/PR. CI dùng Flutter **3.47.5 stable** (Dart 3.13.4), không cần backend `.env` hoặc API key. Xem [hướng dẫn CI cho nhóm](../docs/CI.md) để đọc kết quả và thêm test.
+Xem [README gốc](../README.md#dữ-liệu-và-quyền-riêng-tư) về nơi lưu dữ liệu và [hồ sơ dùng AI](../docs/ai/README.md). Android là nền tảng kiểm thử chính. Chưa có dark mode, offline hoặc giao diện hai ngôn ngữ. Push hiện chỉ triển khai Android; khi app mở chỉ hiện thông báo trong app.
