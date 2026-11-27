@@ -12,7 +12,7 @@ import {
   type ReviewInput,
 } from "./care-data-schema.js";
 import { carePlanner } from "./care-planner.js";
-import { openMeteoProvider } from "./weather.js";
+import { sharedOpenMeteoProvider } from "./weather.js";
 import type { CareProvider } from "./gemini-care.js";
 
 const notFound = () =>
@@ -29,7 +29,7 @@ export function careDataService(
   provider: CareProvider,
   clock = () => new Date(),
 ) {
-  const planner = carePlanner(db, openMeteoProvider(), clock);
+  const planner = carePlanner(db, sharedOpenMeteoProvider(), clock);
   // Publish real AI output without a human approval step. Never claim human verification.
   async function publishAI(
     tx: Prisma.TransactionClient,

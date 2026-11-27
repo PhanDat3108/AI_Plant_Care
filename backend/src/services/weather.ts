@@ -37,6 +37,21 @@ const responseSchema = z.object({
   }),
 });
 
+let sharedProvider: WeatherProvider | undefined;
+/** Share cache, in-flight calls and provider cooldown across all production callers. */
+export function sharedOpenMeteoProvider(): WeatherProvider {
+  return sharedProvider ??= openMeteoProvider();
+}
+
+function retryDelay(header: string | null, now: number, fallback: number) {
+  if (!header) return fallback;
+  const seconds = /^\d+$/.test(header.trim()) ? Number(header) : NaN;
+  const delay = Number.isFinite(seconds)
+    ? seconds * 1000
+    : Date.parse(header) - now;
+  return Number.isFinite(delay) && delay > 0 ? Math.max(fallback, delay) : fallback;
+}
+
 // Fixed provider URL: caller cannot turn weather lookup into arbitrary HTTP access.
 // Bound memory + cache + in-flight deduplication reduce provider quota usage.
 export function openMeteoProvider(
@@ -45,6 +60,8 @@ export function openMeteoProvider(
 ): WeatherProvider {
   const cache = new Map<string, { until: number; value: Forecast | null }>();
   const pending = new Map<string, Promise<Forecast | null>>();
+  let cooldownUntil = 0;
+  let rateLimitCount = 0;
   return {
     async forecast(latitude, longitude, timezone) {
       if (
@@ -58,6 +75,10 @@ export function openMeteoProvider(
       const cached = cache.get(key);
       if (cached && cached.until > clock().getTime()) return cached.value;
       if (pending.has(key)) return pending.get(key)!;
+      if (clock().getTime() < cooldownUntil) return null;
+      // Avoid parallel requests for different locations on the same server IP.
+      // Keep the current schedule; a later sync can fetch that location.
+      if (pending.size > 0) return null;
       const request = (async () => {
         let value: Forecast | null = null;
         try {
@@ -74,7 +95,16 @@ export function openMeteoProvider(
           const r = await fetcher(url, { signal: AbortSignal.timeout(6000) });
           if (!r.ok) {
             console.warn("WEATHER_HTTP_ERROR", r.status);
+            if (r.status === 429) {
+              rateLimitCount = Math.min(rateLimitCount + 1, 7);
+              const fallback = Math.min(15 * 60_000 * 2 ** (rateLimitCount - 1), 24 * 60 * 60_000);
+              const delay = retryDelay(r.headers.get("retry-after"), clock().getTime(), fallback);
+              cooldownUntil = Math.max(cooldownUntil, clock().getTime() + delay);
+              console.warn("WEATHER_RATE_LIMITED", { retry_at: new Date(cooldownUntil).toISOString() });
+              return null;
+            }
             throw new Error("weather unavailable");
+
           }
           const { daily } = responseSchema.parse(await r.json());
           if (
@@ -85,6 +115,7 @@ export function openMeteoProvider(
             ].some((a) => a.length !== daily.time.length)
           )
             throw new Error("weather malformed");
+          rateLimitCount = 0;
           value = {
             source: "open-meteo",
             fetched_at: clock().toISOString(),

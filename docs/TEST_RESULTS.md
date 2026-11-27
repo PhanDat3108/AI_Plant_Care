@@ -40,3 +40,7 @@ Database integration tests, tất cả màn hình trên máy thật, hiệu năn
 Sau thay đổi backend: unit test 136/136 đạt; database integration test trên PostgreSQL tạm riêng 54/54 đạt (6 file). Không chạy test này trên Supabase production. Đã sửa thêm hai test foundation dùng route `/plants` cũ sang `/garden`.
 
 Kiểm tra mới: đúng giờ địa phương, không gửi sớm, chống trùng khi hai lượt sync đồng thời, ngày địa phương khác UTC, không gửi bù dồn các ngày bỏ lỡ, không lặp cùng ngày với thông báo gốc, dừng khi hoàn thành/tắt lịch, thông báo quá hạn vào hàng đợi push và không gửi nếu đã hoàn thành trước lúc worker xử lý. Provider push được giả lập; chưa xác minh giao nhận FCM thật hoặc triển khai Render cho thay đổi này.
+
+## Bổ sung: xử lý Open-Meteo 429
+
+Backend typecheck/build đạt, unit test 143/143, database tạm 54/54 đạt. Bảy test provider mới kiểm tra dùng chung instance, gộp bấm lặp, cooldown toàn vị trí, Retry-After số giây/HTTP date, backoff khi lỗi lặp, cache còn hạn trong cooldown và tránh request khác vị trí đồng thời. HTTP được giả lập; chưa xác nhận nhà cung cấp đã gỡ giới hạn cho IP Render.

@@ -4,11 +4,11 @@ import { reminderService } from "../services/reminders.js";
 import { readConfig } from "../config/env.js";
 import { createDatabase } from "../config/database.js";
 import { carePlanner } from "../services/care-planner.js";
-import { openMeteoProvider } from "../services/weather.js";
+import { sharedOpenMeteoProvider } from "../services/weather.js";
 
 const config = readConfig(process.env);
 const db = createDatabase(config.DATABASE_URL);
-const planner = carePlanner(db, openMeteoProvider());
+const planner = carePlanner(db, sharedOpenMeteoProvider());
 const service = reminderService(db, planner);
 const push = pushNotificationService(db, firebasePushSender(config));
 const watch = process.argv.includes("--watch");

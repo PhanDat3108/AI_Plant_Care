@@ -171,3 +171,11 @@ Event key gốc `care-task:<task-id>` giữ nguyên; lần nhắc lại dùng `c
 Ghi nhật ký chăm sóc cập nhật chu kỳ; hoàn thành nhiệm vụ hoặc tắt lịch dừng nhắc lại cho nhiệm vụ đó. Backend không tự coi cây đã được tưới, không đẩy ngày due_at để che việc quá hạn. Nhãn “Lần nhắc tiếp theo” trên frontend vẫn có thể hiển thị ngày cũ.
 
 Cần cron-job.org bật và gọi endpoint reminders/run thành công. Cron 5 phút/lần sẽ gửi ở lượt chạy đầu tiên từ giờ đặt trở đi, không bảo đảm chính xác đến từng giây. Nếu bỏ lỡ nhiều ngày, không gửi bù một loạt thông báo từng ngày. Lần thông báo gốc chưa từng được tạo vẫn được xử lý theo cơ chế catch-up hiện tại, sau đó nhắc lại hằng ngày; không tạo thêm nhắc lại trong cùng ngày với thông báo gốc.
+
+## Chống gọi dồn Open-Meteo
+
+Các luồng HTTP đồng bộ, tạo care data và cron dùng chung provider trong một tiến trình backend: cache kết quả hợp lệ 1 giờ theo tọa độ/múi giờ, gộp yêu cầu cùng vị trí. Không phát nhiều request thời tiết khác vị trí đồng thời; vị trí chưa lấy được giữ lịch cũ và có thể thử ở lượt sync sau.
+
+HTTP 429 kích hoạt cooldown chung ít nhất 15 phút, tăng gấp đôi khi tiếp tục lỗi (phần backoff tối đa 24 giờ). Tôn trọng Retry-After dạng số giây hoặc HTTP date nếu yêu cầu chờ lâu hơn. Log WEATHER_RATE_LIMITED có retry_at UTC, không in tọa độ. Trong cooldown vẫn dùng cache còn hạn; không dùng dự báo hết hạn hoặc bịa dự báo để báo thành công.
+
+Cache/cooldown nằm trong bộ nhớ: mất khi restart và không chia sẻ giữa nhiều process/replica. Không thể bảo đảm hết 429 nếu IP hosting dùng chung bị nhà cung cấp giới hạn. Không cần API key hay thay đổi frontend cho bản sửa này.
