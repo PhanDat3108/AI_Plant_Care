@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { openMeteoProvider, sharedOpenMeteoProvider } from "../../src/services/weather.js";
+import { openMeteoProvider, sharedWeatherProvider } from "../../src/services/weather.js";
 
 afterEach(() => vi.restoreAllMocks());
 const base = Date.parse("2026-11-27T00:00:00Z");
@@ -8,7 +8,7 @@ const ok = () => Response.json({
   daily: { time: ["2026-11-27"], rain_sum: [0], precipitation_probability_max: [0], temperature_2m_max: [28] },
 });
 it("production callers share the same provider", () => {
-  expect(sharedOpenMeteoProvider()).toBe(sharedOpenMeteoProvider());
+  expect(sharedWeatherProvider()).toBe(sharedWeatherProvider());
 });
 it("429 pauses all locations for 15 minutes and concurrent same-location clicks coalesce", async () => {
   let now = base;

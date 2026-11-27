@@ -1,14 +1,14 @@
 import type { Database } from "../config/database.js";
 import { HttpError } from "../middlewares/errors.js";
 import { carePlanner } from "./care-planner.js";
-import { sharedOpenMeteoProvider } from "./weather.js";
+import { sharedWeatherProvider } from "./weather.js";
 import { reminderService } from "./reminders.js";
 
 export function scheduledReminderService(
   db: Database,
   push?: { run: () => Promise<unknown> },
 ) {
-  const runner = reminderService(db, carePlanner(db, sharedOpenMeteoProvider()));
+  const runner = reminderService(db, carePlanner(db, sharedWeatherProvider()));
   return {
     async run() {
       // Transaction-scoped lock is released even if this instance crashes.

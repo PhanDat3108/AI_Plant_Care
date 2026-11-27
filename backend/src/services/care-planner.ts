@@ -207,7 +207,9 @@ export function carePlanner(
                       rain_probability: adjustment.day.rain_probability,
                       temperature_max_c: adjustment.day.temperature_max_c,
                       is_mock: false,
-                      attribution: "Weather data by Open-Meteo (CC BY 4.0)",
+                      attribution: usableForecast.source === "weatherapi"
+                        ? "Weather data by WeatherAPI.com"
+                        : "Weather data by Open-Meteo (CC BY 4.0)",
                     },
                   },
                 });

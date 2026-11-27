@@ -6,12 +6,12 @@ import { success } from "../middlewares/errors.js";
 import { carePlanner } from "../services/care-planner.js";
 import { careTaskService } from "../services/care-tasks.js";
 import {
-  sharedOpenMeteoProvider,
+  sharedWeatherProvider,
   type WeatherProvider,
 } from "../services/weather.js";
 export function carePlanController(
   db: Database,
-  weather: WeatherProvider = sharedOpenMeteoProvider(),
+  weather: WeatherProvider = sharedWeatherProvider(),
   config?: Config,
 ): { sync: RequestHandler; tasks: RequestHandler } {
   const planner = carePlanner(db, weather);

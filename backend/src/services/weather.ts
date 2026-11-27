@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { weatherApiProvider } from "./weather-api.js";
 
 export interface ForecastDay {
   date: string;
@@ -7,7 +8,7 @@ export interface ForecastDay {
   temperature_max_c: number | null;
 }
 export interface Forecast {
-  source: "open-meteo";
+  source: "open-meteo" | "weatherapi";
   fetched_at: string;
   timezone: string;
   days: ForecastDay[];
@@ -39,8 +40,30 @@ const responseSchema = z.object({
 
 let sharedProvider: WeatherProvider | undefined;
 /** Share cache, in-flight calls and provider cooldown across all production callers. */
-export function sharedOpenMeteoProvider(): WeatherProvider {
-  return sharedProvider ??= openMeteoProvider();
+export function sharedWeatherProvider(): WeatherProvider {
+  return sharedProvider ??= fallbackWeatherProvider(
+    openMeteoProvider(),
+    weatherApiProvider(process.env.WEATHERAPI_API_KEY?.trim() ?? ""),
+  );
+}
+
+export function fallbackWeatherProvider(primary: WeatherProvider, backup: WeatherProvider): WeatherProvider {
+  return {
+    async forecast(latitude, longitude, timezone) {
+      try {
+        const result = await primary.forecast(latitude, longitude, timezone);
+        if (result) return result;
+      } catch {
+        console.warn("WEATHER_PRIMARY_FAILED");
+      }
+      try {
+        return await backup.forecast(latitude, longitude, timezone);
+      } catch {
+        console.warn("WEATHER_BACKUP_FAILED");
+        return null;
+      }
+    },
+  };
 }
 
 function retryDelay(header: string | null, now: number, fallback: number) {
