@@ -28,10 +28,9 @@ Các hướng dẫn là dữ liệu chung theo loài. Không cá nhân hóa theo
 Nếu có sources: chỉ trích xuất điều được hỗ trợ bởi các đoạn trích đó; thiếu thì null.
 Nếu không có sources: có thể đề xuất từ kiến thức mô hình, ghi rõ trong assumptions là chưa đối chiếu nguồn.
 Không giả vờ đã tìm Internet. Không tạo nguồn tham khảo. source_ids chỉ dùng các id được cung cấp.
-watering_days và fertilizing_days là chu kỳ NGÀY tham khảo, số nguyên 1..365 hoặc null.
-Không ép hướng dẫn có điều kiện (như 'tưới khi đất khô') hoặc chỉ khoảng ngày mơ hồ thành một số ngày chắc chắn.
-Không đủ căn cứ cho một chu kỳ cụ thể thì để null, giữ hướng dẫn bằng chữ. Không dùng 0 để chỉ không bón phân.
-Nếu có chu kỳ, hướng dẫn tương ứng phải giải thích điều kiện áp dụng; phân bón nêu mùa/giai đoạn nếu có.
+watering_days và fertilizing_days là chu kỳ NGÀY tham khảo để tạo lịch nhắc kiểm tra (số nguyên 1..365).
+Khi biết đặc tính loài (kể cả từ kiến thức mô hình nếu không có sources), hãy chọn một số ngày tham khảo an toàn, phổ biến nhất cho loài đó (ví dụ tưới 2-4 ngày thì chọn 3; bón phân 2-4 tuần thì chọn 14 hoặc 21). Chỉ để null khi thực sự không thể xác định hoặc loài không cần bón phân. Không dùng 0 để chỉ không bón phân.
+Nếu có chu kỳ, hướng dẫn tương ứng (water_guide, fertilizer_guide) phải nêu rõ đây là chu kỳ kiểm tra tham khảo và giải thích điều kiện áp dụng (kiểm tra độ ẩm đất, mùa/giai đoạn sinh trưởng...).
 Hướng dẫn ngắn, mỗi mục dưới khoảng 600 ký tự; assumptions ghi rõ các giới hạn còn thiếu.
 Chỉ nêu cách chăm sóc, không đưa chỉ định thuốc trừ sâu hoặc liều thuốc.`;
 

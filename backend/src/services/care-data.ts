@@ -136,8 +136,14 @@ export function careDataService(
         existing &&
         sameSpecies(existing.scientific_name, species.scientific_name)
       ) {
+        const missingIntervals =
+          !provider.isMock &&
+          species.care_status === "ai_suggested" &&
+          species.watering_days === null &&
+          species.fertilizing_days === null;
         // Adding a real key automatically replaces cached demo proposals on the next request.
         const reusable =
+          !missingIntervals &&
           existing.provider === provider.provider &&
           existing.model === provider.model;
         if (
