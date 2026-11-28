@@ -12,7 +12,7 @@ Thêm `CRON_SECRET` trong Environment: chuỗi ngẫu nhiên ít nhất 32 ký t
 2. Create cronjob: URL `https://ai-plant-care.onrender.com/api/v1/internal/reminders/run`.
 3. Lịch mỗi 5 phút (`*/5 * * * *`), phương thức POST.
 4. Trong Advanced, thêm header `X-Cron-Secret`: đúng giá trị CRON_SECRET trên Render, không gồm `CRON_SECRET=`. Body có thể để trống.
-5. Lưu, dùng Test Run, xem lịch sử thực thi. Thành công trả HTTP 200 và số processed/notifications_created. Bật cảnh báo lỗi phù hợp.
+5. Bật Enable job và Save để chạy tự động. Test Run chỉ chạy thử một lượt; xem lịch sử thực thi. Thành công trả HTTP 200 và số processed/notifications_created. Bật cảnh báo lỗi phù hợp.
 
 Khi Render đang ngủ, lần gọi đầu có thể timeout trước khi máy chủ khởi động xong; kiểm tra lượt kế tiếp. Không cam kết nhắc chính xác từng phút. Không cấu hình lịch dày hơn chỉ để giữ máy chủ thức. Với nhiều cây, tác vụ có thể vượt thời gian chờ HTTP của dịch vụ cron; khi đó cần chia lô hoặc chuyển sang worker.
 
@@ -22,6 +22,6 @@ Service dùng lại reminderService/carePlanner, đọc cây trong DB, đồng b
 
 Kết quả 200 có `skipped: true, reason: ALREADY_RUNNING` nếu lượt trước còn chạy, hoặc `skipped: false, processed, failed, notifications_created`. 200 với 0 thông báo là bình thường nếu chưa đến hạn hoặc chưa đủ dữ liệu tạo lịch.
 
-Frontend tiếp tục gọi GET /notifications và /notifications/unread-count. Đây là thông báo lưu trong DB để xem trong app, chưa phải push notification trên màn hình khóa.
+Frontend gọi GET /notifications và /notifications/unread-count để đọc hộp thư. Thông báo chăm sóc phù hợp được trigger DB đưa vào `push_deliveries` cho thiết bị đã đăng ký; cron HTTP chạy worker gửi FCM. Cần `PUSH_ENABLED`, Firebase Admin và quyền thông báo Android; xem [push](PUSH_NOTIFICATIONS.md). HTTP 200 không chứng minh điện thoại đã nhận: có thể không có việc đến hạn, không có thiết bị hoặc lượt gửi đang chờ thử lại. Trạng thái gửi thành công chỉ chứng minh FCM chấp nhận yêu cầu.
 
 Test thực tế phải có cây test với dữ liệu chăm sóc/lịch hợp lệ và đến hạn. Không gửi secret qua query string hoặc log. Có thể đổi secret trên Render và cron-job.org cùng lúc nếu cần thu hồi.

@@ -86,6 +86,9 @@ describe("Care Logs Service Functions", () => {
       } as unknown as CareLog;
 
       vi.mocked(mockDb.care_logs.findUnique).mockResolvedValue(existing);
+      vi.mocked(mockDb.plants.findFirst).mockResolvedValue(
+        { id: "plant-1", owner_id: "user-1" } as plantsModel,
+      );
 
       const result = await createCareLog(mockDb, "user-1", "plant-1", {
         kind: "water",
@@ -93,6 +96,18 @@ describe("Care Logs Service Functions", () => {
       });
 
       expect(result).toEqual(existing);
+      expect(mockDb.care_logs.create).not.toHaveBeenCalled();
+    });
+
+    it("rejects another owner even when the replay request ID exists", async () => {
+      vi.mocked(mockDb.plants.findFirst).mockResolvedValue(null);
+      vi.mocked(mockDb.care_logs.findUnique).mockResolvedValue({
+        id: "private-log", plant_id: "plant-other", request_id: "known-request",
+      } as CareLog);
+      await expect(createCareLog(mockDb, "attacker", "plant-other", {
+        kind: "water", request_id: "known-request",
+      })).rejects.toMatchObject({ status: 404 });
+      expect(mockDb.care_logs.findUnique).not.toHaveBeenCalled();
       expect(mockDb.care_logs.create).not.toHaveBeenCalled();
     });
 

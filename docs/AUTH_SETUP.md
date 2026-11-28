@@ -1,6 +1,6 @@
 # Backend Auth — bàn giao cho frontend
 
-Chỉ backend được thay đổi. Supabase quản lý mật khẩu, email và phiên; Express cung cấp API cho frontend. Google OAuth/SMTP chưa được cấu hình trên tài khoản cloud nên chưa kiểm thử toàn luồng thật.
+Supabase quản lý mật khẩu, email và phiên; Express cung cấp API cho Flutter. Tài liệu mô tả hợp đồng code, không chứng nhận cấu hình Google/SMTP đang chạy trên cloud.
 
 ## Chạy
 
@@ -30,9 +30,11 @@ Code Auth chia theo luồng `src/routes/auth.ts` → `src/controllers/auth.ts` �
 
 Các API bảo vệ cần `Authorization: Bearer <Supabase access_token>`. Không dùng Google access token thay thế. API reset-password cũng phục vụ đổi mật khẩu khi đã đăng nhập. Không có API tự đặt lại mật khẩu chỉ bằng email.
 
-Lỗi: 400 INVALID_INPUT/AUTH_FAILED, 401 UNAUTHORIZED cho API bảo vệ, 429 AUTH_RATE_LIMITED, 503 AUTH_UNAVAILABLE hoặc AUTH_REDIRECT_NOT_CONFIGURED. Không trả nguyên lỗi nội bộ Supabase. Supabase áp dụng rate limits; trước khi public backend cần bổ sung giới hạn request tại gateway theo IP, không chỉ dựa vào giao diện.
+Lỗi: 400 INVALID_INPUT/AUTH_FAILED, 401 UNAUTHORIZED cho API bảo vệ, 429 AUTH_RATE_LIMITED, 503 AUTH_UNAVAILABLE hoặc AUTH_REDIRECT_NOT_CONFIGURED. Không trả nguyên lỗi nội bộ Supabase. Phản hồi JSON sai cấu trúc hoặc thiếu token hợp lệ khi cấp phiên trả 503; không diễn giải thành đăng ký thành công. `confirmation_required: true` chỉ cho biết chưa có session, không tiết lộ email đã tồn tại. Supabase áp dụng rate limits; trước khi public backend cần bổ sung giới hạn request tại gateway theo IP, không chỉ dựa vào giao diện.
 
 ## Callback frontend cần xử lý
+
+Hiện Flutter xử lý Google PKCE; màn đăng ký hướng người dùng kiểm tra email. Giữ Confirm email bật cho luồng này. Phần recovery bên dưới là hợp đồng cần triển khai/nghiệm thu, chưa có màn đổi mật khẩu recovery hoàn chỉnh trong Flutter. Callback thử ở backend chỉ mở trong development; production cần callback do nhóm kiểm soát.
 
 Google dùng PKCE: frontend sinh code_verifier ngẫu nhiên đủ mạnh (43–128 ký tự theo chuẩn PKCE), lưu tạm an toàn trên thiết bị; code_challenge = base64url(SHA256(verifier)) không padding. Gửi challenge tới /auth/google, mở URL trả về. Khi app nhận callback có `code`, gửi code đó dưới tên `auth_code` cùng verifier tới /auth/exchange-code. Xóa verifier sau hoàn tất. Backend chỉ chấp nhận callback cấu hình cố định, không nhận redirect tùy ý từ request.
 
@@ -52,7 +54,7 @@ Tạo một tài khoản thử đã xác nhận trong Dashboard để test login
 2. Clients → Create client → Web application (đang dùng OAuth qua trình duyệt).
 3. Authorized redirect URIs: copy callback từ Supabase Google provider. Project hiện tại: `https://htocmxwdinqldyeorrai.supabase.co/auth/v1/callback`.
 4. Supabase → Authentication → Sign In / Providers → Google: bật, điền Client ID/Secret, Save. Secret chỉ lưu tại Supabase.
-5. Supabase Redirect URLs: thêm URL quay về app trùng AUTH_REDIRECT_URL.
+5. Supabase Redirect URLs: thêm URL quay về app trùng GOOGLE_AUTH_REDIRECT_URL (nếu không đặt thì dùng AUTH_REDIRECT_URL).
 
 Google → Supabase dùng callback HTTPS; Supabase → app dùng callback của frontend. Đây là hai URL khác nhau.
 

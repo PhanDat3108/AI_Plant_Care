@@ -9,15 +9,17 @@ flowchart LR
   Middleware --> Controller[Controller: đọc input và trả HTTP]
   Controller --> Service[Service: nghiệp vụ và truy vấn]
   Service --> DB[(PostgreSQL qua Prisma)]
-  Service --> External[Supabase Auth / Thời tiết / Gemini]
-  Job[Job nhắc chăm sóc] --> Service
+  Service --> External[Supabase Auth, Storage / Open-Meteo, WeatherAPI / PlantNet, Gemini / FCM]
+  Cron[cron-job.org với X-Cron-Secret] --> Internal[POST internal/reminders/run]
+  Internal --> Service
+  Job[CLI nhắc chăm sóc] --> Service
 ```
 
 ## Trách nhiệm từng thư mục
 
 | Thư mục | Trách nhiệm |
 | --- | --- |
-| `src/routes/` | Khai báo method, URL, middleware và controller; `index.ts` ghép các nhóm API. Không viết handler hay query DB ở đây. |
+| `src/routes/` | Khai báo method, URL, middleware và controller; `index.ts` ghép các nhóm API. Query DB và nghiệp vụ đặt trong service; route có thể gắn middleware kiểm tra secret. |
 | `src/controllers/` | Đọc và kiểm tra params/query/body, lấy người dùng đã xác thực, gọi service, trả status/JSON. Không truy vấn DB hoặc tính toán nghiệp vụ. |
 | `src/services/` | Truy vấn Prisma, transaction, lọc dữ liệu theo chủ sở hữu, tính thống kê, lập lịch và gọi API ngoài. Không nhận Express `req`/`res`. |
 | `src/middlewares/` | Xác thực, kiểm tra quyền duyệt, header bảo mật và xử lý lỗi. |
@@ -40,7 +42,9 @@ Controller nhận `db` qua hàm khởi tạo để tạo service; việc truyề
 | Dữ liệu chăm sóc từ AI, duyệt dữ liệu | `care-data.ts` | `care-data.ts` | `care-data.ts`, `gemini-care.ts` |
 | Lịch sử thông báo | `notifications.ts` | `notifications.ts` | `notifications.ts` |
 | Kiểm tra tiến trình và DB | `health.ts` | `health.ts` | `health.ts` |
-| Nhắc chăm sóc nền | Không có route; `jobs/reminders.ts` | Không cần controller HTTP | `reminders.ts` → `care-planner.ts` |
+| Nhắc chăm sóc nền | `internal-reminders.ts`; CLI `jobs/reminders.ts` | `internal-reminders.ts` | `scheduled-reminders.ts`, `reminders.ts`, `care-planner.ts`, `push-notifications.ts` |
+| Quét ảnh | `scans.ts` | `scans.ts` | `scans.ts` |
+| Nhật ký | `care-logs.ts` | `care-logs.ts` | `care-logs.ts` |
 
 Ví dụ `GET /api/v1/me/stats`: route gắn `controller.stats` → controller lấy user ID đã xác thực → `profileService.stats(userId)` đếm cây, lượt quét và nhật ký chăm sóc trong DB → controller trả JSON theo định dạng chung.
 

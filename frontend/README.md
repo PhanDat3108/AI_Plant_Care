@@ -6,7 +6,7 @@ Flutter đã tích hợp backend, Supabase Auth qua API, quét ảnh, vườn c�
 
 1. Flutter 3.47.5 / Dart 3.13.4 (khớp CI), Android SDK, JDK 17 trở lên tương thích Android Gradle Plugin; chạy `flutter doctor` để kiểm tra.
 2. Mở emulator hoặc kết nối Android và bật USB debugging; kiểm tra `flutter devices`.
-3. Nhận Firebase client config đúng project từ người quản lý và đặt tại `android/app/google-services.json`. Package phải là `vn.aiplantcare.ai_plant_care`. Không dùng Firebase Admin JSON trong frontend.
+3. Repo đã có `android/app/google-services.json` cho project hiện tại (cấu hình client). Nếu dùng project riêng, thay bằng cấu hình cùng project FCM của backend, package `vn.aiplantcare.ai_plant_care`. Không dùng Firebase Admin JSON trong frontend.
 4. Đăng nhập Google hiện dùng trình duyệt OAuth/PKCE qua Supabase, không dùng Google Sign-In native: kiểm tra Supabase redirect theo [GOOGLE_MOBILE_SETUP](../docs/GOOGLE_MOBILE_SETUP.md). Không bắt buộc đăng ký SHA release cho luồng này.
 
 ## Chạy

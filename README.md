@@ -4,7 +4,7 @@
 
 ## Chức năng
 
-- Đăng ký, xác nhận email, đăng nhập email/Google và khôi phục mật khẩu.
+- Đăng ký, xác nhận email và đăng nhập email/Google. Backend có API khôi phục mật khẩu; callback recovery trên mobile cần hoàn thiện và nghiệm thu riêng.
 - Nhận diện loài, chẩn đoán bệnh bằng camera hoặc ảnh thư viện; quét cho cây đã lưu.
 - Thêm cây vào vườn, ảnh bìa, đổi tên và xóa cây.
 - Hướng dẫn chăm sóc, nhật ký, sửa/bật/tắt lịch tưới và bón phân.
@@ -22,11 +22,11 @@ flutter pub get
 flutter run
 ```
 
-Cần thiết bị/emulator Android và cấu hình Firebase Android đúng package. Không cam kết chạy được ngay sau clone nếu chưa nhận file cấu hình Firebase từ người quản lý dự án.
+Cần thiết bị/emulator Android. Repo đã có Firebase client config cho project hiện tại; không cần khóa Firebase Admin để chạy Flutter. Backend Render và các dịch vụ cloud phải hoạt động.
 
 ## Kiến trúc
 
-Flutter screens/widgets → services → REST API Express → services → Prisma/PostgreSQL. Supabase Auth xác minh người dùng; Supabase Storage lưu ảnh; PlantNet/Gemini xử lý AI qua backend; Open-Meteo cung cấp thời tiết; cron gọi backend để tạo nhắc và gửi FCM.
+Flutter screens/widgets → services → REST API Express → services → Prisma/PostgreSQL. Supabase Auth xác minh người dùng; Supabase Storage lưu ảnh; PlantNet/Gemini xử lý AI qua backend; Open-Meteo cung cấp thời tiết, WeatherAPI dự phòng khi được cấu hình; cron gọi backend để tạo nhắc và gửi FCM.
 
 Chi tiết: [kiến trúc backend](docs/BACKEND_ARCHITECTURE.md), [API frontend](docs/FRONTEND_API_SPEC.md), [push](docs/PUSH_NOTIFICATIONS.md).
 
@@ -46,7 +46,7 @@ Tại thư mục `backend`: `npm ci`, `npm run db:generate`, `npm run typecheck`
 - PostgreSQL/Supabase: hồ sơ, cây, lịch, nhiệm vụ, nhật ký, kết quả quét, thông báo và đăng ký thiết bị push.
 - Supabase Storage: ảnh tải lên; app nhận URL ảnh có thời hạn từ backend.
 - Điện thoại: access/refresh token và thông tin đăng ký push qua secure storage. Không lưu database vườn để dùng offline.
-- Ảnh quét được backend gửi tới PlantNet/Gemini theo chế độ. Vị trí dùng cho dự báo được gửi tới Open-Meteo khi áp dụng.
+- Ảnh quét được backend gửi tới PlantNet/Gemini theo chế độ. Vị trí dùng cho dự báo được gửi tới Open-Meteo hoặc WeatherAPI dự phòng khi áp dụng. Xem [cấu hình thời tiết](docs/WEATHER.md).
 - Camera/thư viện dùng khi chọn hoặc chụp ảnh; quyền thông báo được xin sau khi bắt đầu phiên đăng nhập Android.
 - Không đưa DATABASE_URL, secret Supabase, khóa AI, Firebase Admin JSON hoặc khóa ký APK vào app/Git. Firebase client config không thay thế quyền truy cập server.
 

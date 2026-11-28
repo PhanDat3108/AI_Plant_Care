@@ -65,19 +65,6 @@ export async function createCareLog(
 
   const requestId = data.request_id?.trim() || randomUUID();
 
-  // Kiểm tra idempotency theo cặp (plant_id, request_id)
-  const existingLog = await db.care_logs.findUnique({
-    where: {
-      plant_id_request_id: {
-        plant_id: plantId.trim(),
-        request_id: requestId,
-      },
-    },
-  });
-  if (existingLog) {
-    return existingLog;
-  }
-
   // Kiểm tra cây có tồn tại và thuộc về ownerId không
   const plant = await db.plants.findFirst({
     where: {
@@ -91,6 +78,19 @@ export async function createCareLog(
       "NOT_FOUND",
       "Không tìm thấy cây hoặc bạn không có quyền truy cập.",
     );
+  }
+
+  // Kiểm tra idempotency theo cặp (plant_id, request_id)
+  const existingLog = await db.care_logs.findUnique({
+    where: {
+      plant_id_request_id: {
+        plant_id: plantId.trim(),
+        request_id: requestId,
+      },
+    },
+  });
+  if (existingLog) {
+    return existingLog;
   }
 
   // Nếu có task_id, kiểm tra tính hợp lệ của nhiệm vụ

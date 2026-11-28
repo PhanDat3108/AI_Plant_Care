@@ -34,7 +34,7 @@ Tài liệu này mô tả chi tiết các API phục vụ tính năng **Nhật k
     ```
 
 ### Lưu ý quan trọng cho Frontend
-1. **Giá trị hợp lệ của `kind`:** Trường `kind` được validate theo enum `CARE_LOG_KINDS` định nghĩa tại `backend/src/services/care-logs.ts` (ví dụ: `watering`, `fertilizing`, `pruning`, `treatment`,...). Nếu truyền sai giá trị, API sẽ trả về lỗi `400` kèm danh sách các giá trị hợp lệ.
+1. **Giá trị hợp lệ của `kind`:** Trường `kind` được validate theo enum `CARE_LOG_KINDS` định nghĩa tại `backend/src/services/care-logs.ts` (ví dụ: `water`, `fertilize`, `treat`, `note`). Nếu truyền sai giá trị, API sẽ trả về lỗi `400` kèm danh sách các giá trị hợp lệ.
 2. **Chống gửi trùng dữ liệu (`request_id`):** Bảng `care_logs` có ràng buộc duy nhất `@@unique([plant_id, request_id])`. Frontend có thể tự sinh một UUID v4 cho mỗi thao tác bấm nút lưu và gửi lên qua `request_id`. Nếu mạng lag khiến request bị gửi lặp lại 2 lần, Backend sẽ trả về bản ghi đã tạo trước đó thay vì tạo trùng lặp. Nếu không gửi, Backend sẽ tự sinh `request_id`.
 3. **Liên kết với nhiệm vụ (`task_id`):** Khi người dùng tick hoàn thành một task từ danh sách việc cần làm (`care_tasks`), Frontend truyền thêm `task_id` tương ứng (lưu ý `plant_id` và `kind` phải khớp với task đó).
 
@@ -51,7 +51,7 @@ Tạo một bản ghi lịch sử chăm sóc mới (tưới nước, chữa bệ
 * **Request Body (JSON):**
   ```json
   {
-    "kind": "watering",
+    "kind": "water",
     "note": "Tưới đẫm buổi sáng, cây bắt đầu nhú 2 lá non mới",
     "performed_at": "2026-11-19T08:30:00.000Z",
     "request_id": "550e8400-e29b-41d4-a716-446655440000",
@@ -73,7 +73,7 @@ Tạo một bản ghi lịch sử chăm sóc mới (tưới nước, chữa bệ
       "plant_id": "123e4567-e89b-12d3-a456-426614174000",
       "request_id": "550e8400-e29b-41d4-a716-446655440000",
       "task_id": null,
-      "kind": "watering",
+      "kind": "water",
       "performed_at": "2026-11-19T08:30:00.000Z",
       "note": "Tưới đẫm buổi sáng, cây bắt đầu nhú 2 lá non mới"
     },
@@ -91,11 +91,11 @@ Lấy danh sách các bản ghi nhật ký của một cây, sắp xếp theo d�
 * **Path Parameters:**
   * `id` *(string, UUID, bắt buộc)*: ID của cây (`plant_id`).
 * **Query Parameters (Tùy chọn):**
-  * `kind` *(string)*: Lọc theo loại hoạt động chăm sóc cụ thể (ví dụ: `?kind=watering`).
+  * `kind` *(string)*: Lọc theo loại hoạt động chăm sóc cụ thể (ví dụ: `?kind=water`).
   * `limit` *(number, từ `1` đến `100`)*: Giới hạn số lượng bản ghi trả về (ví dụ: `?limit=20`).
 * **Ví dụ Request:**
   ```http
-  GET /plants/123e4567-e89b-12d3-a456-426614174000/care-logs?kind=watering&limit=10
+  GET /plants/123e4567-e89b-12d3-a456-426614174000/care-logs?kind=water&limit=10
   ```
 
 * **Response Thành công (`200 OK`):**
@@ -108,7 +108,7 @@ Lấy danh sách các bản ghi nhật ký của một cây, sắp xếp theo d�
         "plant_id": "123e4567-e89b-12d3-a456-426614174000",
         "request_id": "550e8400-e29b-41d4-a716-446655440000",
         "task_id": null,
-        "kind": "watering",
+        "kind": "water",
         "performed_at": "2026-11-19T08:30:00.000Z",
         "note": "Tưới đẫm buổi sáng, cây bắt đầu nhú 2 lá non mới"
       },
@@ -117,7 +117,7 @@ Lấy danh sách các bản ghi nhật ký của một cây, sắp xếp theo d�
         "plant_id": "123e4567-e89b-12d3-a456-426614174000",
         "request_id": "440d7300-d18a-30c3-9605-335544330000",
         "task_id": null,
-        "kind": "watering",
+        "kind": "water",
         "performed_at": "2026-11-16T07:45:00.000Z",
         "note": "Lá hơi rũ, đã tưới bổ sung"
       }

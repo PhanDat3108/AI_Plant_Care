@@ -79,13 +79,24 @@ export function authService(config: Config) {
     }
     if (response.status === 204) return null;
     try {
-      return await response.json();
+      const data: unknown = await response.json();
+      if (!data || typeof data !== "object" || Array.isArray(data)) {
+        throw new Error("Invalid Auth response");
+      }
+      return data as Record<string, unknown>;
     } catch {
-      return null;
+      throw new HttpError(
+        503,
+        "AUTH_UNAVAILABLE",
+        "Dịch vụ xác thực trả về dữ liệu không hợp lệ.",
+      );
     }
   }
   function session(data: Record<string, unknown> | null) {
-    if (!data?.access_token || !data.refresh_token)
+    if (
+      typeof data?.access_token !== "string" || !data.access_token.trim() ||
+      typeof data.refresh_token !== "string" || !data.refresh_token.trim()
+    )
       throw new HttpError(
         503,
         "AUTH_UNAVAILABLE",
@@ -110,8 +121,13 @@ export function authService(config: Config) {
           data: { full_name },
         },
       );
-      // Same response for existing and new unconfirmed accounts.
-      return data?.access_token
+      // A malformed success must not masquerade as a confirmation email being sent.
+      if (!data || (!data.access_token && !data.refresh_token &&
+          (typeof data.id !== "string" || !data.id.trim()))) {
+        throw new HttpError(503, "AUTH_UNAVAILABLE", "Dịch vụ xác thực trả về dữ liệu không hợp lệ.");
+      }
+      // Do not return account details for registrations without a session.
+      return data.access_token !== undefined || data.refresh_token !== undefined
         ? { session: session(data), confirmation_required: false }
         : {
             session: null,

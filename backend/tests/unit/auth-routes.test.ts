@@ -154,3 +154,42 @@ it("missing both callback URLs returns a configuration error", async () => {
     .expect(503);
   expect(r.body.error.code).toBe("AUTH_REDIRECT_NOT_CONFIGURED");
 });
+
+
+it.each(["broken-json", "null", "[]", "{}"])(
+  "registration rejects malformed provider success: %s", async (body) => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(body)));
+    const r = await request(app).post("/api/v1/auth/register")
+      .send({ email: "a@example.com", password: "password", full_name: "A" })
+      .expect(503);
+    expect(r.body.error.code).toBe("AUTH_UNAVAILABLE");
+    expect(r.body.data).toBeNull();
+  },
+);
+
+it.each([123, {}, " "])("login rejects invalid token value %j", async (token) => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({
+    access_token: token, refresh_token: "refresh",
+  })));
+  await request(app).post("/api/v1/auth/login")
+    .send({ email: "a@example.com", password: "password" }).expect(503);
+});
+
+it("registration returns a session when confirmation is not required", async () => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({
+    access_token: "access", refresh_token: "refresh",
+  })));
+  const r = await request(app).post("/api/v1/auth/register")
+    .send({ email: "a@example.com", password: "password", full_name: "A" }).expect(200);
+  expect(r.body.data).toMatchObject({
+    confirmation_required: false, session: { access_token: "access", refresh_token: "refresh" },
+  });
+});
+
+it("logout accepts a successful empty provider response", async () => {
+  vi.stubGlobal("fetch", vi.fn()
+    .mockResolvedValueOnce(Response.json({ id: "a8c6e718-dafb-4ee3-a706-d9e01ce8d353" }))
+    .mockResolvedValueOnce(new Response(null, { status: 204 })));
+  await request(app).post("/api/v1/auth/logout")
+    .set("Authorization", "Bearer access").expect(200);
+});

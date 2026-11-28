@@ -1,4 +1,22 @@
-# Kết quả kiểm tra — 27/11/2026
+# Kết quả kiểm tra — 28/11/2026
+
+Kiểm tra working tree dựa trên commit `a365623`, gồm các sửa lỗi Auth và quyền nhật ký chưa commit. Không phải chứng nhận production hoặc mọi chức năng không còn lỗi.
+
+| Kiểm tra | Kết quả |
+|---|---|
+| Backend lint, typecheck, build | Đạt |
+| Flutter analyze --no-pub | Không có vấn đề |
+| Flutter test --no-pub | 19/19 đạt |
+| Backend unit | 163/163, 20 file |
+| PostgreSQL tạm `test:db:isolated` | 54/54, 6 file; áp đủ 9 migration |
+
+Test mới kiểm tra: không trả nhật ký của người khác khi gửi lại request ID; từ chối JSON Auth hỏng/rỗng và token sai kiểu/trống; đăng ký trả session hợp lệ; logout nhận 204. HTTP nhà cung cấp được mock; DB integration dùng cluster tạm, không ghi Supabase chung.
+
+Các mục chưa nghiệm thu: toàn bộ màn hình trên máy thật, SMTP/recovery mobile, giao nhận FCM thật, cấu hình Render hiện tại, hiệu năng nhiều người dùng và rà soát secret toàn bộ nội dung lịch sử Git. Xem [hồ sơ nộp](SUBMISSION.md). Kết quả phía dưới là lịch sử, không phải số test hiện tại.
+
+---
+
+## Lịch sử kiểm tra — 27/11/2026
 
 Kiểm tra trên working tree trong lượt hoàn thiện hồ sơ; chưa phải chứng nhận toàn bộ chức năng production.
 

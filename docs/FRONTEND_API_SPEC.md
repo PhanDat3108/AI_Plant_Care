@@ -1,10 +1,10 @@
 # 📋 Tài liệu Frontend – AI Plant Care
 
 > [!NOTE]
-> Tài liệu này liệt kê **tất cả chức năng backend đã có** (trừ đăng nhập/đăng ký), mô tả chi tiết **màn hình frontend cần thiết** và **API tương ứng** cho từng chức năng.
+> Tài liệu này liệt kê **API hồ sơ, vườn và chăm sóc**; Auth xem [AUTH_SETUP](AUTH_SETUP.md), quét ảnh/nhật ký xem routes và tài liệu chức năng tương ứng, mô tả chi tiết **màn hình frontend cần thiết** và **API tương ứng** cho từng chức năng.
 
-**Base URL**: `http://localhost:3100/api/v1`
-**Auth**: Mọi API (trừ `/auth/*`, `/health`, `/ready`) đều yêu cầu header `Authorization: Bearer <access_token>`
+**Base URL**: local `http://localhost:3100/api/v1`; bản triển khai `https://ai-plant-care.onrender.com/api/v1`
+**Auth**: API nghiệp vụ yêu cầu `Authorization: Bearer <access_token>`. `/health`, `/ready` và Auth đăng ký/login/refresh/forgot/resend/google/exchange công khai; reset-password và logout cần token thật. `/internal/reminders/run` dùng `X-Cron-Secret`, không dùng token người dùng.
 
 ---
 
@@ -43,28 +43,28 @@ Danh sách tất cả cây của người dùng, xem chi tiết từng cây (th�
 | Thành phần UI | Mô tả |
 |---|---|
 | Danh sách dạng grid/list | Mỗi cây hiển thị: `nickname`, `cover_image_key`, `environment`, `region_name` |
-| Phân trang | Dùng `offset` + `limit` để tải thêm (infinite scroll hoặc nút "Tải thêm") |
+| Danh sách | Hiện trả toàn bộ cây của người dùng; chưa hỗ trợ offset/limit |
 | Trạng thái trống | Hiển thị thông báo khi chưa có cây nào |
 
 ### Màn hình 2b: **Chi tiết cây (Plant Detail)**
 
 | Thành phần UI | Mô tả |
 |---|---|
-| Ảnh chính | Hiển thị `cover_image_key` hoặc ảnh tham khảo từ `referenceImage` |
+| Ảnh chính | Hiển thị `cover_image_url` (URL ký có thời hạn), không dùng object key làm URL; hoặc ảnh tham khảo từ `referenceImage` |
 | Tên cây | `nickname` |
 | Thông tin loài | `species.scientific_name`, `species.common_name` |
 | Môi trường | `environment` ("indoor", "outdoor", "unknown") |
 | Vị trí | `region_name`, `latitude`, `longitude` |
 | Ảnh tham khảo | `referenceImage.image_url`, `referenceImage.attribution`, `referenceImage.source_url` |
-| Hướng dẫn chăm sóc loài | Nếu `species.care_status === "verified"`: hiển thị `water_guide`, `light_guide`, `soil_guide`, `temperature_guide`, `fertilizer_guide`, `watering_days`, `fertilizing_days` |
+| Hướng dẫn chăm sóc loài | Nếu `species.care_status` là `verified` hoặc `ai_suggested`: hiển thị `water_guide`, `light_guide`, `soil_guide`, `temperature_guide`, `fertilizer_guide`, `watering_days`, `fertilizing_days` |
 | Nút hành động | Link đến: Lịch chăm sóc, Dữ liệu chăm sóc AI, Đồng bộ lịch |
 
 ### API sử dụng
 
 | Method | Endpoint | Mô tả | Query Params | Response |
 |---|---|---|---|---|
-| `GET` | `/plants` | Danh sách cây | `offset` (default 0), `limit` (default 20, max 100) | Mảng plant objects |
-| `GET` | `/plants/:id` | Chi tiết 1 cây | — | `{ ...plant, species, referenceImage }` |
+| `GET` | `/garden` | Danh sách cây | Không có phân trang | Mảng plant objects |
+| `GET` | `/garden/:id` | Chi tiết 1 cây | — | `{ ...plant, species, referenceImage }` |
 
 ### Cấu trúc dữ liệu Plant
 
@@ -89,15 +89,15 @@ Danh sách tất cả cây của người dùng, xem chi tiết từng cây (th�
 ## 3. Dữ liệu chăm sóc AI (Care Data)
 
 ### Mô tả
-Xem dữ liệu chăm sóc theo loài cây. Hệ thống sử dụng AI (Gemini) để **tạo bản đề xuất (draft)** chăm sóc. Người dùng có quyền reviewer có thể **duyệt hoặc từ chối** bản đề xuất.
+Gemini thật có thể bổ sung dữ liệu với trạng thái `ai_suggested` để lập lịch ngay khi có chu kỳ hợp lệ. Dữ liệu demo không được dùng làm lịch thật; chu kỳ null không tự suy đoán. Reviewer có thể duyệt/từ chối đề xuất. Xem [CARE_DATA_AI](CARE_DATA_AI.md) để phân biệt dữ liệu AI và dữ liệu đã duyệt.
 
 ### Màn hình 3a: **Dữ liệu chăm sóc của cây (Plant Care Data)**
 
 | Thành phần UI | Mô tả |
 |---|---|
 | Thông tin loài | `species.scientific_name`, `species.common_name` |
-| Trạng thái dữ liệu | `species.care_status`: `"missing"` / `"draft"` / `"verified"` |
-| Hướng dẫn chăm sóc (nếu verified) | `species.water_guide`, `light_guide`, `soil_guide`, `temperature_guide`, `fertilizer_guide` |
+| Trạng thái dữ liệu | `species.care_status`: `"missing"` / `"draft"` / `"ai_suggested"` / `"verified"` |
+| Hướng dẫn chăm sóc (verified hoặc ai_suggested, hiển thị nguồn) | `species.water_guide`, `light_guide`, `soil_guide`, `temperature_guide`, `fertilizer_guide` |
 | Chu kỳ | `species.watering_days` ngày/lần tưới, `species.fertilizing_days` ngày/lần bón |
 | Bản đề xuất AI (nếu có draft) | Hiển thị `draft.data` (care proposal), `draft.status`, `draft.provider`, `draft.model`, `draft.is_mock` |
 | Nút "Bổ sung dữ liệu AI" | Gọi API enrich nếu chưa có hoặc muốn tạo lại |
@@ -352,8 +352,8 @@ flowchart TD
 |---|---|---|---|---|
 | 1 | `GET` | `/me` | Lấy hồ sơ | Hồ sơ |
 | 2 | `PATCH` | `/me` | Cập nhật hồ sơ | Hồ sơ |
-| 3 | `GET` | `/plants` | Danh sách cây | Garden |
-| 4 | `GET` | `/plants/:id` | Chi tiết cây | Chi tiết cây |
+| 3 | `GET` | `/garden` | Danh sách cây | Garden |
+| 4 | `GET` | `/garden/:id` | Chi tiết cây | Chi tiết cây |
 | 5 | `GET` | `/plants/:id/care-data` | Dữ liệu chăm sóc | Chi tiết cây / Care Data |
 | 6 | `POST` | `/plants/:id/care-data/enrich` | AI bổ sung care data | Chi tiết cây / Care Data |
 | 7 | `GET` | `/species/:id/care-data` | 🔒 Xem loài (reviewer) | Reviewer Panel |

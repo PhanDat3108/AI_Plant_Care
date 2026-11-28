@@ -79,7 +79,7 @@ Phần này dành cho người phụ trách khởi tạo project mới; thành v
 2. Chạy `npm run db:migrate`. Schema nghiệp vụ plantcare dành cho Express; giữ ngoài danh sách schema public của Data API. Runtime nên dùng role DB riêng với USAGE trên schema và quyền dữ liệu cần thiết; role migration quản lý DDL. Hai URL local ban đầu dùng tài khoản phát triển riêng của dự án.
 3. Đặt SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY và DEV_AUTH_BYPASS=false. Flutter đăng nhập Google/email qua Supabase, gửi token đến API. Middleware gọi Supabase Auth để xác minh token rồi lấy user.id. GET /me tạo profile cho lần đăng nhập đầu, từ đó plants.owner_id liên kết profile.
 4. Có thể chạy database/002_supabase_auth_optional.sql trong Supabase SQL Editor để ràng buộc profiles.id với auth.users.id. Mọi profile hiện có cần tương ứng một tài khoản Auth trước khi áp dụng. Seed demo cố định phù hợp database local.
-5. Khi triển khai dùng NODE_ENV=production. Bypass bật ở staging/production làm ứng dụng từ chối khởi động. Chuẩn bị bucket private cho ảnh khi nhóm viết chức năng upload; schema lưu object key và metadata ảnh tham khảo.
+5. Khi triển khai dùng NODE_ENV=production. Bypass bật ở staging/production làm ứng dụng từ chối khởi động. Cấu hình bucket private cho chức năng upload ảnh đã tích hợp; schema lưu object key và metadata ảnh tham khảo.
 
 Tên key trong .env.example là cấu hình mẫu. `env:init` tạo mật khẩu local ngẫu nhiên và không ghi đè .env hiện có. `GEMINI_API_KEY` dùng cho adapter bổ sung dữ liệu chăm sóc, chỉ lưu phía backend.
 
@@ -92,12 +92,12 @@ Nguồn kết nối [Supabase](https://supabase.com/docs/guides/database/connect
 | GET /api/v1/health | Công khai | Liveness của tiến trình và trạng thái demo auth |
 | GET /api/v1/ready | Công khai | 200 khi đọc được bảng profiles; 503 khi DB/schema chưa sẵn sàng |
 | GET /api/v1/me | Auth hoặc development demo | Hồ sơ và isDemo |
-| GET /api/v1/garden?limit=20&offset=0 | Auth hoặc development demo | Cây của chủ đã xác minh, limit tối đa 100 |
+| GET /api/v1/garden | Auth hoặc development demo | Toàn bộ cây của chủ đã xác minh; chưa phân trang |
 | GET /api/v1/garden/:id | Auth hoặc development demo | Cây, loài và metadata ảnh bìa tham khảo nếu có |
 
 Mọi response có success, data, error và message. Lỗi dùng mã INVALID_INPUT (400), UNAUTHORIZED (401), NOT_FOUND (404), AUTH_UNAVAILABLE/DATABASE_UNAVAILABLE (503), INTERNAL_ERROR (500). Header X-Request-ID dùng đối chiếu log. Log chỉ ghi method, path, status, thời gian và request ID.
 
-Development bypass dùng UUID cố định trong src/config/demo.ts. Đã có lịch/thời tiết, hộp thư nhắc và Gemini bổ sung dữ liệu chăm sóc. CRUD vườn, upload/quét ảnh, ghi nhật ký và gửi push vẫn cần tích hợp với phần của nhóm.
+Development bypass dùng UUID cố định trong src/config/demo.ts. Đã có lịch/thời tiết, hộp thư nhắc và Gemini bổ sung dữ liệu chăm sóc. CRUD vườn, upload/quét ảnh, ghi nhật ký và push Android đã tích hợp. Xem [API](../docs/FRONTEND_API_SPEC.md) và [push](../docs/PUSH_NOTIFICATIONS.md).
 
 ## Cấu trúc để chia việc
 
@@ -118,12 +118,12 @@ Xem [sơ đồ phân lớp và bảng file theo chức năng](../docs/BACKEND_AR
 npm run lint
 npm run typecheck
 npm test
-npm run test:db
+npm run test:db:isolated
 npm run build
 npm run db:status
 ```
 
-test:db cần database đã migrate. Test tạo user/cây ngẫu nhiên và xóa fixture của chính nó. Dùng DB phát triển riêng khi chạy. Auth thật được thay bằng phản hồi giả lập trong test; việc lọc owner được chạy qua API với PostgreSQL thật.
+`test:db:isolated` tạo PostgreSQL tạm riêng, áp migration và tự dọn. Lệnh `test:db` chỉ dùng khi đã chủ động cấu hình database kiểm thử riêng đã migrate. Test tạo user/cây ngẫu nhiên và xóa fixture của chính nó. Dùng DB phát triển riêng khi chạy. Auth thật được thay bằng phản hồi giả lập trong test; việc lọc owner được chạy qua API với PostgreSQL thật.
 
 Migration SQL giữ các CHECK, expression index và FK ghép. schema.prisma dùng cho Prisma Client; các CHECK vẫn được PostgreSQL thực thi. Khi sửa model, tạo migration mới, xem SQL để giữ các ràng buộc và áp trên DB riêng trước. Tránh sửa migration đã áp dụng. Sinh lại client bằng db:generate sau khi sửa schema. Field thời gian Postgres time được Prisma biểu diễn bằng Date có phần ngày quy ước. Xác suất/Decimal có thể được JSON serialize thành chuỗi; Flutter parse dạng num hoặc string theo hợp đồng endpoint.
 
@@ -131,13 +131,13 @@ Khi build, mã sinh Prisma nằm trong dist/generated và được dùng bởi `
 
 ## API Auth cho frontend
 
-Đã có API Express đăng ký, đăng nhập, refresh, quên/đổi mật khẩu, đăng xuất và Google OAuth/PKCE. Xem [hợp đồng API và cấu hình cloud](../docs/AUTH_SETUP.md). Google, SMTP và callback cần cấu hình trước khi kiểm thử đầy đủ. Frontend giữ nguyên.
+Đã có API Express đăng ký, đăng nhập, refresh, quên/đổi mật khẩu, đăng xuất và Google OAuth/PKCE. Xem [hợp đồng API và cấu hình cloud](../docs/AUTH_SETUP.md). Google, SMTP và callback cần cấu hình trước khi kiểm thử đầy đủ. Xem README frontend về luồng đã tích hợp và giới hạn callback recovery.
 
 ## Hồ sơ, lịch chăm sóc và lịch sử thông báo
 
 Màn hình Hồ sơ: [API và dữ liệu frontend cần](../docs/PROFILE_API.md). GET /me và GET /me/stats có thêm thống kê tưới/bón phân/điều trị từ nhật ký; PATCH /me cập nhật tên/múi giờ, đăng xuất dùng POST /auth/logout.
 
-Xem [hợp đồng API và phần chờ module khác](../docs/BACKEND_FEATURES_1_2_5.md). Sau khi cài dependencies và db:generate, mở terminal riêng chạy `npm run reminders:watch` để tự tạo việc và hộp thư nhắc theo lịch/thời tiết. `npm run reminders:run` chạy một lượt. Push tới điện thoại chưa tích hợp.
+Xem [hợp đồng API và phần chờ module khác](../docs/BACKEND_FEATURES_1_2_5.md). Sau khi cài dependencies và db:generate, mở terminal riêng chạy `npm run reminders:watch` để tự tạo việc và hộp thư nhắc theo lịch/thời tiết. `npm run reminders:run` chạy một lượt. Push Android đã tích hợp qua FCM khi bật `PUSH_ENABLED` và cấu hình Firebase Admin. Cron HTTP cũng xử lý hàng đợi push; xem [cron](../docs/FREE_REMINDERS_SETUP.md) và [push](../docs/PUSH_NOTIFICATIONS.md).
 
 Kiểm thử PostgreSQL an toàn trên máy: `npm run test:db:isolated`. Script tạo cluster tạm riêng rồi tự dọn, không dùng Supabase chung.
 

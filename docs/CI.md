@@ -20,7 +20,7 @@ flutter test
 
 ## Phạm vi hiện tại
 
-Đã thay test bộ đếm Flutter mẫu bằng hai widget tests: chuyển các tab và mở Quét AI rồi quay về đúng tab trước đó. Đây là kiểm thử điều hướng của khung hiện có, chưa kiểm thử nhận diện ảnh, đăng nhập hay chăm sóc hoàn chỉnh. Cần bổ sung test khi từng chức năng hoàn thành; chưa đủ yêu cầu 15 test Flutter của mức Xuất sắc trong rubric.
+Bộ Flutter hiện có 19 test về validation, token storage, URL ảnh, nút/loading/trợ năng, chỉnh lịch và điều hướng (có widget tests). Đạt ngưỡng số lượng 15 test; chưa chứng minh toàn bộ luồng đăng nhập, nhận diện ảnh và chăm sóc trên máy thật. Kết quả local không thay thế trạng thái Actions của commit nộp.
 
 CI không tự sửa code, không triển khai app, không áp migration, không ký APK. Muốn bắt buộc CI đạt trước khi merge, quản trị repo cần cấu hình branch protection/ruleset yêu cầu check `Flutter analyze and test`; workflow tự nó chưa chặn merge. Không cần cài GitHub Actions trên máy thành viên.
 
