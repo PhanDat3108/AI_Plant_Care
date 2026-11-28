@@ -14,6 +14,13 @@
 
 ## Chạy nhanh Android
 
+### Cách 1: Cài đặt nhanh bằng file APK (để test trực tiếp)
+
+- Tải file APK tại: [AI Plant Care APK (Google Drive)](https://drive.google.com/file/d/16g0c7i1b1cga6ALKXZS4F_xnttmP5fRa/view?usp=sharing)
+- Chỉ cần tải file về máy Android, bấm cài đặt (cho phép cài ứng dụng từ nguồn không xác định nếu được hỏi) rồi mở app lên chạy thử. App đã kết nối sẵn tới backend trên Render, không cần cài Flutter hay cấu hình thêm.
+
+### Cách 2: Chạy từ mã nguồn
+
 Xem [README frontend](frontend/README.md) để cài Flutter, cấu hình Firebase và chạy. Backend mặc định là Render; người thử app không cần mật khẩu database hoặc khóa AI. Muốn tự chạy backend, xem [README backend](backend/README.md) và `backend/.env.example`.
 
 ```sh
